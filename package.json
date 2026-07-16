@@ -1,6 +1,6 @@
 {
   "name": "easy-user-auth",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Generic authentication, registration and password recovery library.",
   "main": "server.js",
   "browser": "client.js",
