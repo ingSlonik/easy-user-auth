@@ -1,8 +1,31 @@
 {
   "name": "easy-user-auth",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
-  "description": "Generic authentication, registration and password recovery library.",
+  "description": "A lightweight and easy-to-use user authentication, registration, and password recovery library for Node.js, Express, and React applications.",
+  "keywords": [
+    "auth",
+    "authentication",
+    "user-auth",
+    "login",
+    "register",
+    "password-recovery",
+    "express-auth",
+    "react-auth",
+    "jwt",
+    "nodemailer",
+    "argon2"
+  ],
+  "homepage": "https://github.com/ingSlonik/easy-user-auth#readme",
+  "bugs": {
+    "url": "https://github.com/ingSlonik/easy-user-auth/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ingSlonik/easy-user-auth.git"
+  },
+  "author": "Filip Paulů <ing.fenix@seznam.cz>",
+  "license": "MIT",
   "main": "server.js",
   "browser": "client.js",
   "types": "types.d.ts",
