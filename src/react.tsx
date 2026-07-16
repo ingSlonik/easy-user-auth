@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useMemo } from "react";
-import { UUID, UserClient } from "./types";
+import { UUID, UserClient } from "./types.js";
 
 export type UserContextType<TUser> = {
     userId: UUID;
@@ -23,7 +23,7 @@ export function useUser<TUser>() {
     return context as UserContextType<TUser>;
 }
 
-import { EasyLoginClient } from "./client";
+import { EasyLoginClient } from "./client.js";
 
 export type UserProviderProps<TUser> = {
     children: React.ReactNode;
@@ -81,8 +81,12 @@ export function UserProvider<TUser>({
 }: UserProviderProps<TUser>) {
     const api = useMemo(() => {
         if (providedApi) return providedApi;
-        return new EasyLoginClient<TUser>({ serverUrl, credentials });
-    }, [providedApi, serverUrl, credentials]);
+        return new EasyLoginClient<TUser>({
+            serverUrl,
+            credentials,
+            userSecretStoreKey,
+        });
+    }, [providedApi, serverUrl, credentials, userSecretStoreKey]);
 
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [showUserDialog, setShowUserDialog] = useState(false);

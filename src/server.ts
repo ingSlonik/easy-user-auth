@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import argon2 from "argon2";
 import { createHash, randomUUID } from "crypto";
 
-import { UserDB, UserClient, UserLogin, UUID, Lang } from "./types";
+import { UserDB, UserClient, UserLogin, UUID, Lang } from "./types.js";
 
 // Validation Schemas
 export const MailScheme = v.pipe(v.string(), v.email(), v.maxLength(50));
@@ -148,22 +148,33 @@ export class EasyLoginServer<TUser> {
         const referer = req.headers.referer as string;
         const host = req.headers.host as string;
 
+        const isLocalhost = (h: string) => {
+            const clean = h.split(":")[0];
+            return clean === "localhost" || clean === "127.0.0.1";
+        };
+
         if (origin) {
             try {
                 const originUrl = new URL(origin);
                 if (originUrl.host !== host) {
-                    throw new APIError("CSRF validation failed: Origin mismatch", 403);
+                    if (!isLocalhost(originUrl.host) || !isLocalhost(host)) {
+                        throw new APIError("CSRF validation failed: Origin mismatch", 403);
+                    }
                 }
             } catch (e) {
+                if (e instanceof APIError) throw e;
                 throw new APIError("CSRF validation failed: Invalid Origin", 403);
             }
         } else if (referer) {
             try {
                 const refererUrl = new URL(referer);
                 if (refererUrl.host !== host) {
-                    throw new APIError("CSRF validation failed: Referer mismatch", 403);
+                    if (!isLocalhost(refererUrl.host) || !isLocalhost(host)) {
+                        throw new APIError("CSRF validation failed: Referer mismatch", 403);
+                    }
                 }
             } catch (e) {
+                if (e instanceof APIError) throw e;
                 throw new APIError("CSRF validation failed: Invalid Referer", 403);
             }
         }
@@ -196,7 +207,7 @@ export class EasyLoginServer<TUser> {
                 userId,
                 name,
                 user.mail,
-                user.refreshTokens.filter(t => t !== hashed)
+                user.refreshTokens.filter((t: string) => t !== hashed)
             );
 
             await this.db.updateUser(userId, {
@@ -437,7 +448,7 @@ export class EasyLoginServer<TUser> {
                         const currentRefresh = this.getCookie(req, "refreshToken");
                         if (currentRefresh) {
                             const hashed = hashRefreshToken(currentRefresh);
-                            const updated = user.refreshTokens.filter(t => t !== hashed);
+                            const updated = user.refreshTokens.filter((t: string) => t !== hashed);
                             await this.db.updateUser(auth.userId, {
                                 ...user,
                                 refreshTokens: updated,

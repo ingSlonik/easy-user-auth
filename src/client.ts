@@ -1,4 +1,4 @@
-import { UserLogin, UserClient, Lang } from "./types";
+import { UserLogin, UserClient, Lang } from "./types.js";
 
 /**
  * Configuration options for the EasyLogin browser API client.
@@ -8,6 +8,8 @@ export type EasyLoginClientConfig = {
     serverUrl?: string;
     /** The request credentials setting. Defaults to "include" to enable sending session cookies automatically. */
     credentials?: RequestCredentials;
+    /** The storage key used to retrieve/store session credentials. Defaults to "user-secrets". */
+    userSecretStoreKey?: string;
 };
 
 /**
@@ -17,19 +19,36 @@ export type EasyLoginClientConfig = {
 export class EasyLoginClient<TUser> {
     private serverUrl: string;
     private credentials: RequestCredentials;
+    private userSecretStoreKey: string;
 
     constructor(config?: EasyLoginClientConfig) {
         this.serverUrl = config?.serverUrl || "";
         this.credentials = config?.credentials || "include";
+        this.userSecretStoreKey = config?.userSecretStoreKey || "user-secrets";
     }
 
     private async request<TResponse>(endpoint: string, method: "GET" | "POST" | "PATCH", body?: any): Promise<[TResponse | null, Error | null]> {
         const url = `${this.serverUrl}${endpoint}`;
+        
+        const headers: HeadersInit = {
+            "Content-Type": "application/json",
+        };
+
+        if (this.credentials === "omit") {
+            try {
+                const cached = localStorage.getItem(this.userSecretStoreKey);
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    if (parsed.token) {
+                        headers["Authorization"] = `Bearer ${parsed.token}`;
+                    }
+                }
+            } catch (_) {}
+        }
+
         const options: RequestInit = {
             method,
-            headers: {
-                "Content-Type": "application/json",
-            },
+            headers,
             credentials: this.credentials,
         };
 

@@ -100,14 +100,15 @@ app.get("/api/protected-data", async (req, res) => {
 
 ---
 
-### 3. Client-side Integration (React)
-
-### 2. Frontend Integration (React)
+### 3. Frontend Integration (React)
 
 #### A. Setup the Provider
 Wrap your application structure inside `UserProvider`. 
 
-By default, `<UserProvider>` will automatically instantiate the API client internally. You can optionally configure it using `serverUrl` (defaults to `""` for relative path requests) and `credentials` (defaults to `"include"`) directly on the provider.
+By default, `<UserProvider>` will automatically instantiate the API client internally. All configuration props are optional:
+- `serverUrl` (optional, defaults to `""` for relative path requests).
+- `credentials` (optional, defaults to `"include"`). Set to `"omit"` if you want to use header-only token validation.
+- `userSecretStoreKey` (optional, defaults to `"user-secrets"`). The storage key under which credentials are automatically saved and read. Note: This is only used when `credentials` is set to `"omit"`.
 
 ```tsx
 import React from "react";
@@ -159,6 +160,7 @@ export default function App() {
             defaultUser={defaultUser}
             dict={dict}
             // serverUrl="http://localhost:1111" // Optional: custom api url
+            // credentials="omit"                 // Optional: set to "omit" for header-only auth (automatic token mapping)
         >
             <MyLayout />
         </UserProvider>
@@ -166,7 +168,7 @@ export default function App() {
 }
 ```
 
-#### C. Consume Session State
+#### B. Consume Session State
 Use the `useUser` hook in any child component to read/write states or trigger custom user actions:
 
 ```tsx
@@ -193,7 +195,7 @@ export function ProfileWidget() {
 }
 ```
 
-#### D. Rendering Auth Forms
+#### C. Rendering Auth Forms
 You can render the built-in authentication forms (which automatically link to the Provider context) anywhere in your layout:
 
 ```tsx
@@ -216,7 +218,7 @@ export function AuthPage() {
 
 ---
 
-### 3. Frontend Integration (Vanilla JS / Non-React)
+### 4. Frontend Integration (Vanilla JS / Non-React)
 
 If you are not using React, you can import and use the browser API client directly:
 
@@ -225,8 +227,9 @@ import { EasyLoginClient } from "easy-user-auth/client";
 import { UserProfile } from "./types";
 
 const authClient = new EasyLoginClient<UserProfile>({
-    serverUrl: "https://api.mysite.com", // Leave empty for relative calls
-    credentials: "include"
+    serverUrl: "https://api.mysite.com", // Optional: leave empty for relative calls (default)
+    credentials: "include", // Optional: "include" for cookies (default), "omit" for header-only auth
+    userSecretStoreKey: "user-secrets" // Optional: custom storage key for token loading (only used when credentials is "omit")
 });
 
 // 1. Register a new user
