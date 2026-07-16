@@ -9,13 +9,13 @@
     "forceConsistentCasingInFileNames": true,
     "jsx": "react-jsx",
     "declaration": true,
-    "outDir": "./dist"
+    "outDir": "./"
   },
   "include": [
-    "server.ts",
-    "client.ts",
-    "react.tsx",
-    "types.ts"
+    "src/server.ts",
+    "src/client.ts",
+    "src/react.tsx",
+    "src/types.ts"
   ],
   "exclude": [
     "node_modules",
