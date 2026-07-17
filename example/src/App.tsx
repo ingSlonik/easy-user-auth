@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { UserProvider, useUser, UserDialog } from "easy-user-auth/react";
+import "easy-user-auth/style.css";
+
 // User Profile shape for our test application
 export type UserProfile = {
   name: string;
@@ -14,11 +16,25 @@ const defaultUser: UserProfile = {
   role: "user",
 };
 
-// Example of a partial dictionary override (Czech localization for main buttons)
+// A funny, pirate-themed English dictionary overriding some fields to demonstrate partial merging
 const dict = {
-  logIn: "Přihlásit se",
-  logOut: "Odhlásit se",
-  userCreateAccount: "Vytvořit účet",
+  userDialogLoggedInHeader: "Ahoy! Ye have boarded successfully.",
+  logOut: "Abandon Ship (Log Out)",
+  logIn: "Ahoy! Log In",
+  userCreateAccount: "Join the Crew",
+  userDialogText: "State yer credentials, scallywag:",
+  password: "Secret Whisper (Password)",
+  passwordAgain: "Confirm Secret Whisper",
+  userWrongPasswordMatch: "Arr! The whispers do not match!",
+  userWrongPasswordLength: "Yer whisper must be at least 6 characters long, matey!",
+  userWrongMailFormat: "That bilge-water ain't a real email!",
+  userWrongFill: "Fill all boxes or walk the plank!",
+  userErrorLogIn: "Wrong email or whisper, landlubber!",
+  registerIn: "Sign the Roster",
+  allRight: "Plundering...",
+  userForgottenPasswordButton: "Forgot yer key?",
+  userForgottenPassword: "Request New Key",
+  userForgottenPasswordSuccess: "A message in a bottle has been sent (see below).",
 };
 
 export type AuthMode = "cookies" | "headers";
@@ -56,7 +72,7 @@ export default function App() {
 }
 
 function AppContent({ authMode, onAuthModeChange }: { authMode: AuthMode; onAuthModeChange: (mode: AuthMode) => void }) {
-  const { isLoggedIn, user, showUserDialog } = useUser<UserProfile>();
+  const { isLoggedIn, user, showUserDialog, dict } = useUser<UserProfile>();
   const [resetToken, setResetToken] = useState<string | null>(null);
 
   // Check URL query parameters for reset token on mount/route change
@@ -402,7 +418,7 @@ function Dashboard({ authMode }: { authMode: AuthMode }) {
 
 // 3. Custom Reset Password Form
 function ResetPasswordForm({ token, onCancel }: { token: string; onCancel: () => void }) {
-  const { api, loginUser } = useUser<UserProfile>();
+  const { api, loginUser, dict } = useUser<UserProfile>();
   const [password, setPassword] = useState("");
   const [passwordAgain, setPasswordAgain] = useState("");
   const [error, setError] = useState<string | null>(null);
