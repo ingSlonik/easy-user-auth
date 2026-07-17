@@ -1,6 +1,6 @@
 {
   "name": "easy-user-auth",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "type": "module",
   "description": "A lightweight and easy-to-use user authentication, registration, and password recovery library for Node.js, Express, and React applications.",
   "keywords": [
@@ -54,7 +54,8 @@
     "./types": {
       "types": "./types.d.ts",
       "default": "./types.js"
-    }
+    },
+    "./style.css": "./style.css"
   },
   "dependencies": {
     "argon2": "^0.44.0",

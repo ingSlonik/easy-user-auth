@@ -100,7 +100,53 @@ app.get("/api/protected-data", async (req, res) => {
 
 ---
 
-### 3. Frontend Integration (React)
+### 3. Frontend Integration (Vanilla JS / Non-React)
+
+If you are not using React, you can import and use the browser API client directly:
+
+```typescript
+import { EasyLoginClient } from "easy-user-auth/client";
+import { UserProfile } from "./types";
+
+const authClient = new EasyLoginClient<UserProfile>({
+    serverUrl: "https://api.mysite.com", // Optional: leave empty for relative calls (default)
+    credentials: "include", // Optional: "include" for cookies (default), "omit" for header-only auth
+    userSecretStoreKey: "user-secrets" // Optional: custom storage key for token loading (only used when credentials is "omit")
+});
+
+// 1. Register a new user
+const [registeredUser, regErr] = await authClient.addRegistration({
+    name: "John Doe",
+    avatar: "avatar.png",
+    role: "user",
+    mail: "john@doe.com",
+    password: "securepassword"
+});
+
+// 2. Log in
+const [loggedInUser, loginErr] = await authClient.addLogin({
+    mail: "john@doe.com",
+    password: "securepassword"
+});
+
+// 3. Get active session profile (automatically reads and verifies httpOnly cookies)
+const [activeSession, sessionErr] = await authClient.getUser();
+
+// 4. Update profile fields
+if (activeSession) {
+    await authClient.updateUser({
+        ...activeSession,
+        name: "John Updated"
+    });
+}
+
+// 5. Log out
+await authClient.logout();
+```
+
+---
+
+### 4. Frontend Integration (React)
 
 #### A. Setup the Provider
 Wrap your application structure inside `UserProvider`. 
@@ -122,7 +168,7 @@ const defaultUser: UserProfile = {
 };
 
 const dict = {
-    userDialogLoggedInHeader: "You are logged in.",
+    userDialogLoggedInHeader: "You have logged in successfully.",
     logOut: "Log out",
     logIn: "Log in",
     userCreateAccount: "Create account",
@@ -132,24 +178,24 @@ const dict = {
     passwordAgain: "Confirm password",
     userWrongPasswordMatch: "Passwords do not match.",
     userWrongPasswordLength: "Password must be at least 6 characters.",
-    userWrongMailFormat: "Invalid email formatting.",
+    userWrongMailFormat: "Invalid email format.",
     userWrongFill: "Please fill in all fields.",
     userErrorRegister: "Registration failed. Email might already be taken.",
     userErrorLogIn: "Invalid email or password.",
     registerIn: "Register",
-    allRight: "Success",
+    allRight: "Processing",
     userForgottenPasswordButton: "Forgot password?",
     userForgottenPassword: "Recover Password",
-    userForgottenPasswordSuccess: "Recovery email sent successfully.",
+    userForgottenPasswordSuccess: "A recovery link has been sent (see below).",
     close: "Close",
     userWrongSendMail: "We couldn't send the recovery email.",
     userForgottenPasswordError: "Something went wrong.",
-    userForgottenPasswordErrorSend: "Send recovery mail",
-    userForgottenPasswordErrorChange: "Unable to change password.",
-    userForgottenPasswordSuccessChange: "Password successfully updated.",
+    userForgottenPasswordErrorSend: "Send recovery link",
+    userForgottenPasswordErrorChange: "Unable to change password. The link might be invalid or expired.",
+    userForgottenPasswordSuccessChange: "Password successfully updated. You are logged in.",
     backToHome: "Back to Home",
     userForgottenPasswordChange: "Change Password",
-    change: "Change",
+    change: "Save new password",
     userNamePlaceholder: "Your Name",
     save: "Save",
 };
@@ -216,51 +262,77 @@ export function AuthPage() {
 }
 ```
 
----
+##### Custom Layout / Switcher Rendering
+If you want to render your own custom switcher/tabs component (and control where the forms are displayed), pass the `renderTabs` prop callback. It provides `isRegisterMode`, `setRegisterMode`, and pre-configured `<LogInForm />` and `<RegisterForm />` nodes:
 
-### 4. Frontend Integration (Vanilla JS / Non-React)
-
-If you are not using React, you can import and use the browser API client directly:
-
-```typescript
-import { EasyLoginClient } from "easy-user-auth/client";
-import { UserProfile } from "./types";
-
-const authClient = new EasyLoginClient<UserProfile>({
-    serverUrl: "https://api.mysite.com", // Optional: leave empty for relative calls (default)
-    credentials: "include", // Optional: "include" for cookies (default), "omit" for header-only auth
-    userSecretStoreKey: "user-secrets" // Optional: custom storage key for token loading (only used when credentials is "omit")
-});
-
-// 1. Register a new user
-const [registeredUser, regErr] = await authClient.addRegistration({
-    name: "John Doe",
-    avatar: "avatar.png",
-    role: "user",
-    mail: "john@doe.com",
-    password: "securepassword"
-});
-
-// 2. Log in
-const [loggedInUser, loginErr] = await authClient.addLogin({
-    mail: "john@doe.com",
-    password: "securepassword"
-});
-
-// 3. Get active session profile (automatically reads and verifies httpOnly cookies)
-const [activeSession, sessionErr] = await authClient.getUser();
-
-// 4. Update profile fields
-if (activeSession) {
-    await authClient.updateUser({
-        ...activeSession,
-        name: "John Updated"
-    });
-}
-
-// 5. Log out
-await authClient.logout();
+```tsx
+<UserDialog
+    renderTabs={(isRegisterMode, setRegisterMode, loginForm, registerForm) => (
+        <div className="my-custom-container">
+            <div className="my-custom-tabs">
+                <button 
+                    onClick={() => setRegisterMode(false)} 
+                    style={{ fontWeight: !isRegisterMode ? "bold" : "normal" }}
+                >
+                    Login
+                </button>
+                <button 
+                    onClick={() => setRegisterMode(true)} 
+                    style={{ fontWeight: isRegisterMode ? "bold" : "normal" }}
+                >
+                    Create Account
+                </button>
+            </div>
+            
+            <div className="my-custom-content">
+                {isRegisterMode ? registerForm : loginForm}
+            </div>
+        </div>
+    )}
+/>
 ```
+
+You can also control the tabs state completely externally using props:
+
+```tsx
+const [registerMode, setRegisterMode] = useState(false);
+...
+<UserDialog
+    isRegisterMode={registerMode}
+    onRegisterModeChange={setRegisterMode}
+/>
+```
+
+#### D. Styling and Customization
+
+Since all inline styles have been removed from the React components, you should import the default stylesheet to render the dialog modal and forms correctly:
+
+```tsx
+import "easy-user-auth/style.css";
+```
+
+##### Available CSS Class Names
+For custom CSS styling and overrides, the following class names are exposed on the components:
+
+- `.easy-user-auth-overlay` — Backdrop backdrop overlay container
+- `.easy-user-auth-modal` — Modal content wrapper box
+- `.easy-user-auth-close-btn` — Modal absolute top-right close button (`&times;`)
+- `.easy-user-auth-tabs` — Tabs switcher container row
+- `.easy-user-auth-tab` — Individual tab buttons
+- `.easy-user-auth-tab-active` — Active/selected tab button
+- `.easy-user-auth-form` — Core `<form>` wrappers
+- `.easy-user-auth-form-input` — Label and input wrapping container block
+- `.easy-user-auth-label` — Form field labels
+- `.easy-user-auth-input` — Text/Password form controls (`<input>`)
+- `.easy-user-auth-submit-btn` — Primary action buttons (Login / Register / Recover)
+- `.easy-user-auth-logout-btn` — Logout button
+- `.easy-user-auth-back-btn` — Secondary action / Back buttons
+- `.easy-user-auth-forgot-link` — Text link mapping to forgotten password modal
+- `.easy-user-auth-title` — Headers inside forms (e.g. Forgotten password)
+- `.easy-user-auth-text` — Descriptive instruction texts
+- `.easy-user-auth-alert` — Validation errors / Status alerts
+- `.easy-user-auth-info` — Under-field helper descriptions
+- `.easy-user-auth-loading` — Spinner and loader labels
 
 ---
 

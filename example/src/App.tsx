@@ -15,37 +15,38 @@ const defaultUser: UserProfile = {
 };
 
 // Czech translation dictionary for Czech localization
+// English translation dictionary
 const dict = {
-  userDialogLoggedInHeader: "Jste úspěšně přihlášeni.",
-  logOut: "Odhlásit se",
-  logIn: "Přihlásit se",
-  userCreateAccount: "Vytvořit účet",
-  userDialogText: "Zadejte své přihlašovací údaje níže:",
-  mail: "E-mail",
-  password: "Heslo",
-  passwordAgain: "Heslo znovu",
-  userWrongPasswordMatch: "Hesla se neshodují.",
-  userWrongPasswordLength: "Heslo musí mít alespoň 6 znaků.",
-  userWrongMailFormat: "Neplatný formát e-mailu.",
-  userWrongFill: "Vyplňte prosím všechna pole.",
-  userErrorRegister: "Registrace se nezdařila. E-mail může být již obsazený.",
-  userErrorLogIn: "Nesprávný e-mail nebo heslo.",
-  registerIn: "Registrovat se",
-  allRight: "Zpracování",
-  userForgottenPasswordButton: "Zapomněli jste heslo?",
-  userForgottenPassword: "Obnovit heslo",
-  userForgottenPasswordSuccess: "Odkaz na obnovu hesla byl odeslán (viz níže).",
-  close: "Zavřít",
-  userWrongSendMail: "Nepodařilo se odeslat e-mail pro obnovu.",
-  userForgottenPasswordError: "Něco se nepovedlo.",
-  userForgottenPasswordErrorSend: "Odeslat odkaz na obnovu",
-  userForgottenPasswordErrorChange: "Heslo se nepodařilo změnit. Odkaz může být neplatný nebo vypršel.",
-  userForgottenPasswordSuccessChange: "Heslo bylo úspěšně změněno. Jste přihlášeni.",
-  backToHome: "Zpět domů",
-  userForgottenPasswordChange: "Změnit heslo",
-  change: "Uložit nové heslo",
-  userNamePlaceholder: "Vaše jméno",
-  save: "Uložit",
+  userDialogLoggedInHeader: "You have logged in successfully.",
+  logOut: "Log out",
+  logIn: "Log in",
+  userCreateAccount: "Create account",
+  userDialogText: "Enter your credentials below:",
+  mail: "Email",
+  password: "Password",
+  passwordAgain: "Confirm password",
+  userWrongPasswordMatch: "Passwords do not match.",
+  userWrongPasswordLength: "Password must be at least 6 characters.",
+  userWrongMailFormat: "Invalid email format.",
+  userWrongFill: "Please fill in all fields.",
+  userErrorRegister: "Registration failed. Email might already be taken.",
+  userErrorLogIn: "Invalid email or password.",
+  registerIn: "Register",
+  allRight: "Processing",
+  userForgottenPasswordButton: "Forgot password?",
+  userForgottenPassword: "Recover Password",
+  userForgottenPasswordSuccess: "A recovery link has been sent (see below).",
+  close: "Close",
+  userWrongSendMail: "We couldn't send the recovery email.",
+  userForgottenPasswordError: "Something went wrong.",
+  userForgottenPasswordErrorSend: "Send recovery link",
+  userForgottenPasswordErrorChange: "Unable to change password. The link might be invalid or expired.",
+  userForgottenPasswordSuccessChange: "Password successfully updated. You are logged in.",
+  backToHome: "Back to Home",
+  userForgottenPasswordChange: "Change Password",
+  change: "Save new password",
+  userNamePlaceholder: "Your Name",
+  save: "Save",
 };
 
 export type AuthMode = "cookies" | "headers";
@@ -109,7 +110,7 @@ function AppContent({ authMode, onAuthModeChange }: { authMode: AuthMode; onAuth
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
             <div className="auth-mode-selector" style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.85rem" }}>
-              <label htmlFor="auth-mode-select" style={{ color: "var(--text-secondary)" }}>Metoda ověření:</label>
+              <label htmlFor="auth-mode-select" style={{ color: "var(--text-secondary)" }}>Auth Method:</label>
               <select
                 id="auth-mode-select"
                 value={authMode}
@@ -131,7 +132,7 @@ function AppContent({ authMode, onAuthModeChange }: { authMode: AuthMode; onAuth
               {isLoggedIn ? (
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                   <span style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}>
-                    Přihlášen jako <strong>{user.name || "Uživatel"}</strong>
+                    Logged in as <strong>{user.name || "User"}</strong>
                   </span>
                   <div
                     style={{
@@ -180,39 +181,39 @@ function LandingPage() {
 
   return (
     <div className="hero-section glass-card">
-      <div className="hero-badge">🔐 Knihovna easy-user-auth</div>
+      <div className="hero-badge">🔐 easy-user-auth library</div>
       <h1 className="hero-title">
-        Bezpečné přihlašování pro <span>React</span> aplikace
+        Secure Authentication for <span>React</span> Applications
       </h1>
       <p className="hero-subtitle">
-        Vyzkoušejte si lehké, vysoce zabezpečené a plně generické ověřování uživatelů postavené na HTTP-only cookies s rotací refresh tokenů.
+        Try lightweight, secure, and fully generic user authentication built on HTTP-only cookies with refresh token rotation.
       </p>
       <div>
         <button className="btn btn-primary" onClick={showUserDialog}>
-          Spustit Demo / Přihlásit se 🚀
+          Run Demo / Log In 🚀
         </button>
       </div>
 
       <div className="features-grid">
         <div className="feature-card glass-card">
           <div className="feature-icon">🔒</div>
-          <h3>Moderní zabezpečení</h3>
+          <h3>Modern Security</h3>
           <p>
-            Využívá HTTP-Only cookies s flagy SameSite=Lax a Secure. Obsahuje vestavěnou ochranu proti CSRF.
+            Uses HTTP-Only cookies with SameSite=Lax and Secure flags. Includes built-in CSRF protection.
           </p>
         </div>
         <div className="feature-card glass-card">
           <div className="feature-icon">⚙️</div>
-          <h3>Generické profily</h3>
+          <h3>Generic Profiles</h3>
           <p>
-            Můžete si definovat libovolná uživatelská pole (jméno, role, barva motivu). Knihovna je automaticky synchronizuje.
+            Define custom user profile properties (name, role, theme color) and synchronize them seamlessly.
           </p>
         </div>
         <div className="feature-card glass-card">
           <div className="feature-icon">✉️</div>
-          <h3>Zapomenutá hesla</h3>
+          <h3>Password Recovery</h3>
           <p>
-            Plný tok obnovy zapomenutého hesla. Vývojový backend vypisuje odkazy na obnovu přímo v aplikaci.
+            Complete forgotten password recovery flow. The development backend displays outgoing reset emails locally.
           </p>
         </div>
       </div>
@@ -241,7 +242,7 @@ function Dashboard({ authMode }: { authMode: AuthMode }) {
   // Handle saving generic user profile data
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    setSaveStatus("Ukládám...");
+    setSaveStatus("Saving...");
 
     // Updates local state and triggers debounced API sync automatically via user provider
     setUser({
@@ -252,7 +253,7 @@ function Dashboard({ authMode }: { authMode: AuthMode }) {
     });
 
     setTimeout(() => {
-      setSaveStatus("Profil byl aktualizován na serveru!");
+      setSaveStatus("Profile updated on server!");
       setTimeout(() => setSaveStatus(null), 3000);
     }, 500);
   };
@@ -282,10 +283,10 @@ function Dashboard({ authMode }: { authMode: AuthMode }) {
       if (response.ok) {
         setApiResult({ success: true, message: data.message });
       } else {
-        setApiResult({ success: false, message: data.message || "Neautorizovaný přístup!" });
+        setApiResult({ success: false, message: data.message || "Unauthorized access!" });
       }
     } catch (err) {
-      setApiResult({ success: false, message: "Selhalo síťové volání na backend." });
+      setApiResult({ success: false, message: "Network call to backend failed." });
     } finally {
       setApiLoading(false);
     }
@@ -307,7 +308,7 @@ function Dashboard({ authMode }: { authMode: AuthMode }) {
           <div className="avatar-large">
             {(user.name || "U")[0].toUpperCase()}
           </div>
-          <h2>{user.name || "Uživatel"}</h2>
+          <h2>{user.name || "User"}</h2>
           <span style={{
             fontSize: "0.8rem",
             background: "rgba(255, 255, 255, 0.08)",
@@ -322,12 +323,12 @@ function Dashboard({ authMode }: { authMode: AuthMode }) {
 
           <div className="profile-meta">
             <div className="meta-row">
-              <span className="meta-label">ID uživatele:</span>
+              <span className="meta-label">User ID:</span>
               <span className="meta-value" title={userId}>{userId.substring(0, 12)}...</span>
             </div>
             <div className="meta-row">
-              <span className="meta-label">E-mail:</span>
-              <span className="meta-value">{(user as any).mail || "Neznámý"}</span>
+              <span className="meta-label">Email:</span>
+              <span className="meta-value">{(user as any).mail || "Unknown"}</span>
             </div>
           </div>
 
@@ -336,7 +337,7 @@ function Dashboard({ authMode }: { authMode: AuthMode }) {
             style={{ width: "100%", marginTop: "1rem" }}
             onClick={() => loginUser(null)}
           >
-            Odhlásit se 🚪
+            Log Out 🚪
           </button>
         </div>
       </div>
@@ -345,15 +346,15 @@ function Dashboard({ authMode }: { authMode: AuthMode }) {
       <div className="dashboard-main">
         {/* Profile Settings (generic variables) */}
         <div className="glass-card">
-          <h2 style={{ marginBottom: "1rem", fontSize: "1.4rem" }}>⚙️ Nastavení Profilu (Generická Data)</h2>
+          <h2 style={{ marginBottom: "1rem", fontSize: "1.4rem" }}>⚙️ Profile Settings (Generic Data)</h2>
           <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginBottom: "1.5rem" }}>
-            Tato pole (Jméno, Role, Barva motivu) jsou součástí generického typu <code>TUser</code>.
-            Knihovna je automaticky ukládá do localStorage a synchronizuje s databází na serveru.
+            These fields (Name, Role, Theme Color) are part of the generic <code>TUser</code> profile type.
+            The library saves them automatically to localStorage and synchronizes them with the backend database.
           </p>
 
           <form onSubmit={handleSaveProfile}>
             <div className="form-group">
-              <label>Zobrazované jméno</label>
+              <label>Display Name</label>
               <input
                 type="text"
                 className="form-control"
@@ -371,13 +372,13 @@ function Dashboard({ authMode }: { authMode: AuthMode }) {
                 onChange={(e) => setRoleInput(e.target.value as "admin" | "user")}
                 style={{ background: "rgba(20, 18, 38, 0.95)" }}
               >
-                <option value="user">Uživatel (User)</option>
-                <option value="admin">Administrátor (Admin)</option>
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
               </select>
             </div>
 
             <div className="form-group">
-              <label>Barva motivu aplikace</label>
+              <label>App Theme Color</label>
               <div className="color-picker">
                 {themeOptions.map((opt) => (
                   <div
@@ -393,7 +394,7 @@ function Dashboard({ authMode }: { authMode: AuthMode }) {
 
             <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginTop: "1.5rem" }}>
               <button type="submit" className="btn btn-primary">
-                Uložit změny
+                Save Changes
               </button>
               {saveStatus && <span style={{ fontSize: "0.9rem", color: "var(--accent-emerald)" }}>{saveStatus}</span>}
             </div>
@@ -402,10 +403,10 @@ function Dashboard({ authMode }: { authMode: AuthMode }) {
 
         {/* Protected API Test */}
         <div className="glass-card">
-          <h2 style={{ marginBottom: "1rem", fontSize: "1.4rem" }}>🔒 Ověření chráněných API</h2>
+          <h2 style={{ marginBottom: "1rem", fontSize: "1.4rem" }}>🔒 Verify Protected APIs</h2>
           <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginBottom: "1.25rem" }}>
-            Kliknutím na tlačítko níže odešlete požadavek na chráněný endpoint serveru. Express server zkontroluje
-            přihlašovací cookies a vrátí zabezpečenou zprávu.
+            Click the button below to send an authenticated request to a protected backend endpoint. The Express server validates
+            session credentials and returns a secure response.
           </p>
 
           <button
@@ -413,12 +414,12 @@ function Dashboard({ authMode }: { authMode: AuthMode }) {
             onClick={handleCallProtectedApi}
             disabled={apiLoading}
           >
-            {apiLoading ? "Ověřuji..." : "Volat chráněné API 🔓"}
+            {apiLoading ? "Verifying..." : "Call Protected API 🔓"}
           </button>
 
           {apiResult && (
             <div className={`custom-alert ${apiResult.success ? "custom-alert-success" : "custom-alert-error"}`}>
-              <strong>{apiResult.success ? "Úspěch!" : "Chyba!"}</strong> {apiResult.message}
+              <strong>{apiResult.success ? "Success!" : "Error!"}</strong> {apiResult.message}
             </div>
           )}
         </div>
@@ -469,7 +470,7 @@ function ResetPasswordForm({ token, onCancel }: { token: string; onCancel: () =>
     <div className="glass-card" style={{ maxWidth: 500, margin: "2rem auto" }}>
       <h2 style={{ marginBottom: "1rem" }}>🔑 {dict.userForgottenPasswordChange}</h2>
       <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginBottom: "1.5rem" }}>
-        Zadejte nové heslo pro svůj účet. Token byl úspěšně ověřen.
+        Enter a new password for your account. The recovery token has been validated.
       </p>
 
       {success ? (
@@ -511,10 +512,10 @@ function ResetPasswordForm({ token, onCancel }: { token: string; onCancel: () =>
               className="btn btn-primary"
               disabled={!!validationError || !password || !passwordAgain || loading}
             >
-              {loading ? "Měním..." : dict.change}
+              {loading ? "Updating..." : dict.change}
             </button>
             <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={loading}>
-              Zrušit
+              Cancel
             </button>
           </div>
         </form>
@@ -561,22 +562,22 @@ function EmailConsoleSimulator({ onUseToken }: { onUseToken: (token: string) => 
   return (
     <div className="dev-simulator">
       <div className="dev-simulator-header">
-        <span className="dev-simulator-badge">💻 Vývojářská konzole e-mailů (Simulátor)</span>
+        <span className="dev-simulator-badge">💻 Developer Email Console (Simulator)</span>
         {latestMail && (
           <button className="dev-simulator-clear" onClick={handleClear}>
-            Vymazat poštu 🗑️
+            Clear Mailbox 🗑️
           </button>
         )}
       </div>
 
       {latestMail ? (
         <div className="mail-envelope">
-          <div><strong>Čas:</strong> {new Date(latestMail.timestamp).toLocaleTimeString()}</div>
-          <div><strong>Odesílatel:</strong> easy-user-auth system</div>
-          <div><strong>Příjemce:</strong> {latestMail.mailTo}</div>
-          <div><strong>Předmět:</strong> Obnova hesla (Simulováno)</div>
+          <div><strong>Time:</strong> {new Date(latestMail.timestamp).toLocaleTimeString()}</div>
+          <div><strong>Sender:</strong> easy-user-auth system</div>
+          <div><strong>Recipient:</strong> {latestMail.mailTo}</div>
+          <div><strong>Subject:</strong> Password Recovery (Simulated)</div>
           <div style={{ marginTop: "8px", borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "8px" }}>
-            Byl vygenerován odkaz pro obnovu hesla. Můžete na něj rovnou kliknout a vyzkoušet reset hesla v této záložce:
+            A password recovery link has been generated. You can click it to test password reset directly in this tab:
           </div>
           <a
             href="#"
@@ -586,12 +587,12 @@ function EmailConsoleSimulator({ onUseToken }: { onUseToken: (token: string) => 
               onUseToken(latestMail.token);
             }}
           >
-            Resetovat heslo s tokenem: {latestMail.token}
+            Reset password with token: {latestMail.token}
           </a>
         </div>
       ) : (
         <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontStyle: "italic" }}>
-          Žádná nová pošta. Pokud si chcete vyzkoušet obnovu zapomenutého hesla, odhlaste se, otevřete přihlašovací dialog, klikněte na "Zapomněli jste heslo?" a odešlete svůj e-mail. Zde se následně objeví vygenerovaný odkaz.
+          No new emails. To test the password recovery flow: log out, open the login dialog, click "Forgot password?" and submit your email. The generated link will appear here.
         </p>
       )}
     </div>

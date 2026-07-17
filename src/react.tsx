@@ -7,6 +7,10 @@ export type UserContextType<TUser> = {
     isLoggedIn: boolean;
     showUserDialog: () => void;
     closeUserDialog: () => void;
+    showForgotDialog: (email?: string) => void;
+    closeForgotDialog: () => void;
+    dialogMail: string;
+    setDialogMail: (mail: string) => void;
     setUser: (user: TUser) => void;
     loginUser: (user: null | UserClient<TUser>) => void;
     dict: UserProviderProps<TUser>["dict"];
@@ -90,6 +94,8 @@ export function UserProvider<TUser>({
 
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [showUserDialog, setShowUserDialog] = useState(false);
+    const [showForgotDialog, setShowForgotDialog] = useState(false);
+    const [dialogMail, setDialogMail] = useState("");
     const [userId, setUserId] = useState<UUID>(() => {
         try {
             const cached = localStorage.getItem("guest-id");
@@ -193,6 +199,13 @@ export function UserProvider<TUser>({
                 isLoggedIn,
                 showUserDialog: () => setShowUserDialog(true),
                 closeUserDialog: () => setShowUserDialog(false),
+                showForgotDialog: (email?: string) => {
+                    if (email) setDialogMail(email);
+                    setShowForgotDialog(true);
+                },
+                closeForgotDialog: () => setShowForgotDialog(false),
+                dialogMail,
+                setDialogMail,
                 setUser,
                 loginUser,
                 dict,
@@ -204,29 +217,11 @@ export function UserProvider<TUser>({
                 renderDialog(showUserDialog, () => setShowUserDialog(false), <UserDialog />)
             ) : (
                 showUserDialog && (
-                    <div className="easy-user-auth-overlay" style={{
-                        position: "fixed",
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        backgroundColor: "rgba(0,0,0,0.5)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        zIndex: 9999
-                    }}>
-                        <div className="easy-user-auth-modal" style={{
-                            background: "var(--bg-color, white)",
-                            padding: 24,
-                            borderRadius: 8,
-                            position: "relative",
-                            minWidth: 320
-                        }}>
+                    <div className="easy-user-auth-overlay">
+                        <div className="easy-user-auth-modal">
                             <button
                                 className="easy-user-auth-close-btn"
                                 onClick={() => setShowUserDialog(false)}
-                                style={{ position: "absolute", top: 8, right: 8 }}
                             >
                                 &times;
                             </button>
@@ -235,69 +230,104 @@ export function UserProvider<TUser>({
                     </div>
                 )
             )}
+            {showForgotDialog && (
+                <div className="easy-user-auth-overlay">
+                    <div className="easy-user-auth-modal">
+                        <button
+                            className="easy-user-auth-close-btn"
+                            onClick={() => setShowForgotDialog(false)}
+                        >
+                            &times;
+                        </button>
+                        <ForgottenPasswordForm
+                            initialMail={dialogMail}
+                            onBack={() => {
+                                setShowForgotDialog(false);
+                                setShowUserDialog(true);
+                            }}
+                        />
+                    </div>
+                </div>
+            )}
         </UserContext.Provider>
     );
 }
+export type UserDialogProps = {
+    isRegisterMode?: boolean;
+    onRegisterModeChange?: (mode: boolean) => void;
+    renderTabs?: (
+        isRegisterMode: boolean,
+        setRegisterMode: (mode: boolean) => void,
+        loginForm: React.ReactNode,
+        registerForm: React.ReactNode
+    ) => React.ReactNode;
+};
 
 // Unified Dialog component
-export function UserDialog() {
+export function UserDialog({
+    isRegisterMode: controlledIsRegisterMode,
+    onRegisterModeChange,
+    renderTabs,
+}: UserDialogProps = {}) {
     const { isLoggedIn, loginUser, dict } = useUser<any>();
-    const [isRegisterMode, setIsRegisterMode] = useState(false);
+    const [localRegisterMode, setLocalRegisterMode] = useState(false);
+
+    const isRegisterMode = controlledIsRegisterMode !== undefined ? controlledIsRegisterMode : localRegisterMode;
+    const setIsRegisterMode = onRegisterModeChange || setLocalRegisterMode;
 
     if (isLoggedIn) {
         return (
-            <div className="user-dialog">
-                <p>{dict.userDialogLoggedInHeader}</p>
-                <button onClick={() => loginUser(null)}>{dict.logOut}</button>
+            <div className="user-dialog easy-user-auth-dialog">
+                <p className="easy-user-auth-logged-in-header">{dict.userDialogLoggedInHeader}</p>
+                <button className="easy-user-auth-logout-btn" onClick={() => loginUser(null)}>{dict.logOut}</button>
             </div>
         );
     }
 
+    const loginForm = <LogInForm />;
+    const registerForm = <RegisterForm />;
+
     return (
-        <div className="user-dialog">
-            <div className="easy-user-auth-tabs" style={{ display: "flex", marginBottom: 16 }}>
-                <button
-                    onClick={() => setIsRegisterMode(false)}
-                    style={{
-                        flex: 1,
-                        padding: 8,
-                        fontWeight: !isRegisterMode ? "bold" : "normal",
-                        borderBottom: !isRegisterMode ? "2px solid #000" : "none",
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer"
-                    }}
-                >
-                    {dict.logIn}
-                </button>
-                <button
-                    onClick={() => setIsRegisterMode(true)}
-                    style={{
-                        flex: 1,
-                        padding: 8,
-                        fontWeight: isRegisterMode ? "bold" : "normal",
-                        borderBottom: isRegisterMode ? "2px solid #000" : "none",
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer"
-                    }}
-                >
-                    {dict.userCreateAccount}
-                </button>
-            </div>
-            {isRegisterMode ? <RegisterForm /> : <LogInForm />}
+        <div className="user-dialog easy-user-auth-dialog">
+            {renderTabs ? (
+                renderTabs(isRegisterMode, setIsRegisterMode, loginForm, registerForm)
+            ) : (
+                <>
+                    <div className="easy-user-auth-tabs">
+                        <button
+                            type="button"
+                            className={`easy-user-auth-tab ${!isRegisterMode ? "easy-user-auth-tab-active" : ""}`}
+                            onClick={() => setIsRegisterMode(false)}
+                        >
+                            {dict.logIn}
+                        </button>
+                        <button
+                            type="button"
+                            className={`easy-user-auth-tab ${isRegisterMode ? "easy-user-auth-tab-active" : ""}`}
+                            onClick={() => setIsRegisterMode(true)}
+                        >
+                            {dict.userCreateAccount}
+                        </button>
+                    </div>
+                    {isRegisterMode ? registerForm : loginForm}
+                </>
+            )}
         </div>
     );
 }
 
 // Form Component: LogIn
 export function LogInForm() {
-    const { loginUser, dict, api } = useUser<any>();
-    const [mail, setMail] = useState("");
+    const { loginUser, dict, api, showForgotDialog, closeUserDialog, dialogMail, setDialogMail } = useUser<any>();
+    const [mail, setMail] = useState(dialogMail);
     const [password, setPassword] = useState("");
     const [message, setMessage] = useState("");
     const [isSending, setIsSending] = useState(false);
-    const [showForgot, setShowForgot] = useState(false);
+
+    const handleMailChange = (val: string) => {
+        setMail(val);
+        setDialogMail(val);
+    };
 
     let errorFeedback = "";
     if (mail.length > 0 && !mail.includes("@")) {
@@ -326,27 +356,25 @@ export function LogInForm() {
         setIsSending(false);
     }
 
-    if (showForgot) {
-        return <ForgottenPasswordForm onBack={() => setShowForgot(false)} />;
-    }
-
     return (
-        <form onSubmit={handleSave} className="login-form">
-            <p>{dict.userDialogText}</p>
-            <div className="form-input">
-                <label>{dict.mail}</label>
+        <form onSubmit={handleSave} className="easy-user-auth-form login-form">
+            <p className="easy-user-auth-text">{dict.userDialogText}</p>
+            <div className="easy-user-auth-form-input form-input">
+                <label className="easy-user-auth-label">{dict.mail}</label>
                 <input
                     type="email"
+                    className="easy-user-auth-input"
                     value={mail}
-                    onChange={(e) => setMail(e.target.value)}
+                    onChange={(e) => handleMailChange(e.target.value)}
                     maxLength={50}
                     required
                 />
             </div>
-            <div className="form-input">
-                <label>{dict.password}</label>
+            <div className="form-input easy-user-auth-form-input">
+                <label className="easy-user-auth-label">{dict.password}</label>
                 <input
                     type="password"
+                    className="easy-user-auth-input"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     maxLength={50}
@@ -354,19 +382,22 @@ export function LogInForm() {
                 />
             </div>
 
-            {message && <p className="alert">{message}</p>}
+            {message && <p className="easy-user-auth-alert alert">{message}</p>}
 
             {isSending ? (
-                <div className="loading-spinner">{dict.allRight}...</div>
+                <div className="easy-user-auth-loading loading-spinner">{dict.allRight}...</div>
             ) : (
                 <>
-                    <p className="info">{errorFeedback || dict.allRight}</p>
-                    <button type="submit" disabled={!!errorFeedback || !mail || !password} className="width">
+                    <p className="easy-user-auth-info info">{errorFeedback || dict.allRight}</p>
+                    <button type="submit" disabled={!!errorFeedback || !mail || !password} className="easy-user-auth-submit-btn width">
                         {dict.logIn}
                     </button>
                     <a
-                        onClick={() => setShowForgot(true)}
-                        style={{ display: "inline-block", paddingTop: "12px", cursor: "pointer", textDecoration: "underline" }}
+                        onClick={() => {
+                            closeUserDialog();
+                            showForgotDialog(mail);
+                        }}
+                        className="easy-user-auth-forgot-link"
                     >
                         {dict.userForgottenPasswordButton}
                     </a>
@@ -417,32 +448,35 @@ export function RegisterForm() {
     }
 
     return (
-        <form onSubmit={handleSave} className="register-form">
-            <p>{dict.userDialogText}</p>
-            <div className="form-input">
-                <label>{dict.mail}</label>
+        <form onSubmit={handleSave} className="easy-user-auth-form register-form">
+            <p className="easy-user-auth-text">{dict.userDialogText}</p>
+            <div className="easy-user-auth-form-input form-input">
+                <label className="easy-user-auth-label">{dict.mail}</label>
                 <input
                     type="email"
+                    className="easy-user-auth-input"
                     value={mail}
                     onChange={(e) => setMail(e.target.value)}
                     maxLength={50}
                     required
                 />
             </div>
-            <div className="form-input">
-                <label>{dict.password}</label>
+            <div className="easy-user-auth-form-input form-input">
+                <label className="easy-user-auth-label">{dict.password}</label>
                 <input
                     type="password"
+                    className="easy-user-auth-input"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     maxLength={50}
                     required
                 />
             </div>
-            <div className="form-input">
-                <label>{dict.passwordAgain}</label>
+            <div className="easy-user-auth-form-input form-input">
+                <label className="easy-user-auth-label">{dict.passwordAgain}</label>
                 <input
                     type="password"
+                    className="easy-user-auth-input"
                     value={passwordAgain}
                     onChange={(e) => setPasswordAgain(e.target.value)}
                     maxLength={50}
@@ -450,14 +484,14 @@ export function RegisterForm() {
                 />
             </div>
 
-            {message && <p className="alert">{message}</p>}
+            {message && <p className="easy-user-auth-alert alert">{message}</p>}
 
             {isSending ? (
-                <div className="loading-spinner">{dict.allRight}...</div>
+                <div className="easy-user-auth-loading loading-spinner">{dict.allRight}...</div>
             ) : (
                 <>
-                    <p className="info">{errorFeedback || dict.allRight}</p>
-                    <button type="submit" disabled={!!errorFeedback || !mail || !password || !passwordAgain} className="width">
+                    <p className="easy-user-auth-info info">{errorFeedback || dict.allRight}</p>
+                    <button type="submit" disabled={!!errorFeedback || !mail || !password || !passwordAgain} className="easy-user-auth-submit-btn width">
                         {dict.registerIn}
                     </button>
                 </>
@@ -467,9 +501,14 @@ export function RegisterForm() {
 }
 
 // Form Component: ForgottenPassword
-export function ForgottenPasswordForm({ lang, onBack }: { lang?: string; onBack?: () => void }) {
-    const { dict, api } = useUser<any>();
-    const [mail, setMail] = useState("");
+export function ForgottenPasswordForm({ lang, onBack, initialMail = "" }: { lang?: string; onBack?: (mail?: string) => void; initialMail?: string }) {
+    const { dict, api, dialogMail, setDialogMail } = useUser<any>();
+    const [mail, setMail] = useState(initialMail || dialogMail);
+
+    const handleMailChange = (val: string) => {
+        setMail(val);
+        setDialogMail(val);
+    };
     const [isSending, setIsSending] = useState(false);
     const [result, setResult] = useState<null | "error" | "success" | "unknown-mail">(null);
 
@@ -495,44 +534,45 @@ export function ForgottenPasswordForm({ lang, onBack }: { lang?: string; onBack?
     }
 
     return (
-        <form onSubmit={handleSend} className="forgotten-password-form">
-            <h3>{dict.userForgottenPassword}</h3>
+        <form onSubmit={handleSend} className="easy-user-auth-form forgotten-password-form">
+            <h3 className="easy-user-auth-title">{dict.userForgottenPassword}</h3>
 
             {result === "success" ? (
                 <>
-                    <p className="info">{dict.userForgottenPasswordSuccess}</p>
+                    <p className="easy-user-auth-info info">{dict.userForgottenPasswordSuccess}</p>
                     {onBack ? (
-                        <button type="button" onClick={onBack}>{dict.close}</button>
+                        <button type="button" className="easy-user-auth-back-btn" onClick={() => onBack(mail)}>{dict.close}</button>
                     ) : (
-                        <p>{dict.close}</p>
+                        <p className="easy-user-auth-close-text">{dict.close}</p>
                     )}
                 </>
             ) : (
                 <>
-                    <div className="form-input">
-                        <label>{dict.mail}</label>
+                    <div className="easy-user-auth-form-input form-input">
+                        <label className="easy-user-auth-label">{dict.mail}</label>
                         <input
                             type="email"
+                            className="easy-user-auth-input"
                             value={mail}
-                            onChange={(e) => setMail(e.target.value)}
+                            onChange={(e) => handleMailChange(e.target.value)}
                             maxLength={50}
                             required
                         />
                     </div>
 
-                    {result === "unknown-mail" && <p className="alert">{dict.userWrongSendMail}</p>}
-                    {result === "error" && <p className="alert">{dict.userForgottenPasswordError}</p>}
+                    {result === "unknown-mail" && <p className="easy-user-auth-alert alert">{dict.userWrongSendMail}</p>}
+                    {result === "error" && <p className="easy-user-auth-alert alert">{dict.userForgottenPasswordError}</p>}
 
                     {isSending ? (
-                        <div className="loading-spinner">{dict.allRight}...</div>
+                        <div className="easy-user-auth-loading loading-spinner">{dict.allRight}...</div>
                     ) : (
                         <>
-                            <p className="info">{errorFeedback}</p>
-                            <button type="submit" disabled={!!errorFeedback || !mail} className="width">
+                            <p className="easy-user-auth-info info">{errorFeedback}</p>
+                            <button type="submit" disabled={!!errorFeedback || !mail} className="easy-user-auth-submit-btn width">
                                 {dict.userForgottenPasswordErrorSend}
                             </button>
                             {onBack && (
-                                <button type="button" className="width" style={{ marginTop: 8 }} onClick={onBack}>
+                                <button type="button" className="easy-user-auth-back-btn width" onClick={() => onBack(mail)}>
                                     {dict.close}
                                 </button>
                             )}

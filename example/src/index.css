@@ -482,6 +482,12 @@ header {
 
 /* Modal Backdrop Overlay */
 .easy-user-auth-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 9999 !important;
   background-color: rgba(3, 2, 7, 0.75) !important;
   backdrop-filter: blur(12px) !important;
   -webkit-backdrop-filter: blur(12px) !important;
@@ -502,6 +508,7 @@ header {
   max-width: 440px !important;
   width: 100% !important;
   position: relative !important;
+  min-width: 320px !important;
   animation: modal-zoom 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -512,6 +519,9 @@ header {
 
 /* Modal Close Button */
 .easy-user-auth-close-btn {
+  position: absolute !important;
+  top: 8px !important;
+  right: 8px !important;
   color: var(--text-secondary) !important;
   font-size: 24px !important;
   opacity: 0.7 !important;
@@ -524,6 +534,7 @@ header {
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--panel-border) !important;
+  cursor: pointer !important;
 }
 
 .easy-user-auth-close-btn:hover {
@@ -547,16 +558,18 @@ header {
 }
 
 /* Dialog Logged In text */
-.user-dialog > p:first-of-type {
+.easy-user-auth-logged-in-header {
   font-size: 1.1rem;
   font-weight: 500;
   text-align: center;
-  color: var(--text-primary);
+  color: var(--text-primary) !important;
   margin-top: 1rem;
 }
 
 /* Tabs: Login / Register */
 .easy-user-auth-tabs {
+  display: flex !important;
+  margin-bottom: 16px !important;
   background: rgba(255, 255, 255, 0.03);
   padding: 4px;
   border-radius: var(--border-radius-md);
@@ -564,25 +577,29 @@ header {
   gap: 4px;
 }
 
-.easy-user-auth-tabs button {
+.easy-user-auth-tab {
+  flex: 1 !important;
   font-family: var(--font-family) !important;
   font-size: 0.95rem !important;
   color: var(--text-secondary) !important;
   border-radius: var(--border-radius-sm) !important;
   padding: 0.6rem !important;
+  background: none !important;
+  border: none !important;
+  cursor: pointer !important;
   transition: var(--transition-smooth) !important;
 }
 
-.easy-user-auth-tabs button:hover {
+.easy-user-auth-tab:hover {
   color: var(--text-primary) !important;
 }
 
 /* Selected Tab Style Override (Reset default inline borders) */
-.easy-user-auth-tabs button[style*="bold"] {
+.easy-user-auth-tab-active {
   background: rgba(255, 255, 255, 0.06) !important;
   color: white !important;
   font-weight: 600 !important;
-  border-bottom: none !important; /* overrides inline border-bottom */
+  border-bottom: none !important;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
@@ -593,20 +610,20 @@ header {
   margin-top: 0.5rem;
 }
 
-.user-dialog .form-input {
+.easy-user-auth-form-input {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
   margin-bottom: 1rem;
 }
 
-.user-dialog .form-input label {
+.easy-user-auth-label {
   font-size: 0.85rem;
   font-weight: 500;
   color: var(--text-secondary);
 }
 
-.user-dialog .form-input input {
+.easy-user-auth-input {
   font-family: var(--font-family);
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--panel-border);
@@ -615,9 +632,11 @@ header {
   border-radius: var(--border-radius-md);
   font-size: 0.95rem;
   transition: var(--transition-smooth);
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.user-dialog .form-input input:focus {
+.easy-user-auth-input:focus {
   outline: none;
   border-color: var(--accent-color);
   box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.25);
@@ -625,33 +644,34 @@ header {
 }
 
 /* Info and alert validation texts */
-.user-dialog p.info {
+.easy-user-auth-info {
   font-size: 0.85rem;
-  color: var(--text-muted);
+  color: var(--text-muted) !important;
   margin-bottom: 1rem;
 }
 
-.user-dialog p.alert {
+.easy-user-auth-alert {
   font-size: 0.85rem;
-  color: #fca5a5;
-  background: rgba(239, 68, 68, 0.1);
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--border-radius-sm);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #fca5a5 !important;
+  background: rgba(239, 68, 68, 0.1) !important;
+  padding: 0.5rem 0.75rem !important;
+  border-radius: var(--border-radius-sm) !important;
+  border: 1px solid rgba(239, 68, 68, 0.2) !important;
   margin-bottom: 1rem;
 }
 
 /* Loading spinner */
-.user-dialog .loading-spinner {
+.easy-user-auth-loading {
   font-size: 0.95rem;
-  color: var(--accent-color);
+  color: var(--accent-color) !important;
   font-weight: 500;
   text-align: center;
   padding: 1rem 0;
 }
 
 /* Buttons in Library Dialogs */
-.user-dialog button.width, .user-dialog button[type="submit"], .user-dialog button:not(.easy-user-auth-close-btn):not([style*="flex"]) {
+.easy-user-auth-submit-btn,
+.easy-user-auth-back-btn.width {
   font-family: var(--font-family) !important;
   font-size: 0.95rem !important;
   font-weight: 600 !important;
@@ -668,13 +688,15 @@ header {
   box-shadow: 0 4px 15px rgba(124, 58, 237, 0.25) !important;
 }
 
-.user-dialog button.width:hover, .user-dialog button[type="submit"]:hover {
+.easy-user-auth-submit-btn:hover,
+.easy-user-auth-back-btn.width:hover {
   background: var(--primary-hover) !important;
   transform: translateY(-1px);
   box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4) !important;
 }
 
-.user-dialog button.width:disabled, .user-dialog button[type="submit"]:disabled {
+.easy-user-auth-submit-btn:disabled,
+.easy-user-auth-back-btn.width:disabled {
   background: rgba(255, 255, 255, 0.05) !important;
   color: var(--text-muted) !important;
   box-shadow: none !important;
@@ -683,38 +705,54 @@ header {
   border: 1px solid var(--panel-border) !important;
 }
 
-/* LogOut button inside dialog */
-.user-dialog button[onClick*="loginUser(null)"], .user-dialog button:not(.width):not([type="submit"]):not(.easy-user-auth-close-btn):not([style*="flex"]) {
+/* LogOut button inside dialog & secondary back buttons */
+.easy-user-auth-logout-btn,
+.easy-user-auth-back-btn:not(.width) {
+  font-family: var(--font-family) !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  padding: 0.75rem 1.5rem !important;
+  border-radius: var(--border-radius-md) !important;
+  cursor: pointer !important;
+  display: block !important;
+  width: 100% !important;
+  text-align: center !important;
+  transition: var(--transition-smooth) !important;
   background: rgba(244, 63, 94, 0.1) !important;
   color: #fda4af !important;
   border: 1px solid rgba(244, 63, 94, 0.3) !important;
   box-shadow: none !important;
 }
 
-.user-dialog button[onClick*="loginUser(null)"]:hover {
+.easy-user-auth-logout-btn:hover,
+.easy-user-auth-back-btn:not(.width):hover {
   background: var(--accent-rose) !important;
   color: white !important;
   box-shadow: 0 4px 15px rgba(244, 63, 94, 0.3) !important;
 }
 
 /* Forgotten password link trigger */
-.user-dialog a[onClick*="setShowForgot"] {
+.easy-user-auth-forgot-link {
   font-size: 0.85rem !important;
   color: var(--text-secondary) !important;
   text-align: center !important;
+  display: inline-block !important;
   width: 100%;
   margin-top: 0.5rem;
+  cursor: pointer !important;
+  text-decoration: underline;
   transition: var(--transition-smooth) !important;
 }
 
-.user-dialog a[onClick*="setShowForgot"]:hover {
+.easy-user-auth-forgot-link:hover {
   color: var(--accent-color) !important;
 }
 
 /* Header in Forgotten password form */
-.forgotten-password-form h3 {
+.easy-user-auth-title {
   font-size: 1.2rem;
   margin-bottom: 0.75rem;
   font-weight: 600;
   text-align: center;
+  color: var(--text-primary) !important;
 }

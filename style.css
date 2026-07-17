@@ -1,0 +1,195 @@
+/* ==========================================================================
+   easy-user-auth Default Styling Sheet
+   ========================================================================== */
+
+/* 1. Backdrop overlay for the modal dialog */
+.easy-user-auth-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* 2. Modal content dialog box */
+.easy-user-auth-modal {
+    background: #ffffff;
+    padding: 24px;
+    border-radius: 8px;
+    position: relative;
+    width: 320px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    color: #333333;
+    box-sizing: border-box;
+}
+
+/* 3. Close button positioned absolute top-right */
+.easy-user-auth-close-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    line-height: 1;
+    color: #999999;
+    padding: 0;
+}
+.easy-user-auth-close-btn:hover {
+    color: #333333;
+}
+
+/* 4. Tab layout switcher */
+.easy-user-auth-tabs {
+    display: flex;
+    margin-bottom: 16px;
+    border-bottom: 1px solid #eeeeee;
+}
+
+.easy-user-auth-tab {
+    flex: 1;
+    padding: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: center;
+    color: #777777;
+    border-bottom: 2px solid transparent;
+}
+.easy-user-auth-tab:hover {
+    color: #000000;
+}
+.easy-user-auth-tab-active {
+    font-weight: bold;
+    color: #000000;
+    border-bottom-color: #000000;
+}
+
+/* 5. Forms and fields */
+.easy-user-auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.easy-user-auth-form-input {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.easy-user-auth-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333333;
+}
+
+.easy-user-auth-input {
+    padding: 8px 12px;
+    border: 1px solid #cccccc;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: inherit;
+    width: 100%;
+    box-sizing: border-box;
+}
+.easy-user-auth-input:focus {
+    outline: none;
+    border-color: #000000;
+}
+
+/* 6. Buttons */
+.easy-user-auth-submit-btn {
+    padding: 10px 16px;
+    background-color: #000000;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 8px;
+    box-sizing: border-box;
+}
+.easy-user-auth-submit-btn:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.easy-user-auth-logout-btn,
+.easy-user-auth-back-btn {
+    padding: 8px 16px;
+    background-color: #ffffff;
+    color: #333333;
+    border: 1px solid #cccccc;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 4px;
+    box-sizing: border-box;
+}
+.easy-user-auth-logout-btn:hover,
+.easy-user-auth-back-btn:hover {
+    background-color: #f5f5f5;
+}
+
+/* 7. Underlined forgot password text links */
+.easy-user-auth-forgot-link {
+    display: block;
+    text-align: center;
+    font-size: 13px;
+    color: #0066cc;
+    cursor: pointer;
+    text-decoration: underline;
+    margin-top: 8px;
+}
+.easy-user-auth-forgot-link:hover {
+    color: #0044aa;
+}
+
+/* 8. Text elements, loaders, and status alerts */
+.easy-user-auth-title {
+    font-size: 18px;
+    margin-bottom: 12px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.easy-user-auth-text {
+    font-size: 14px;
+    color: #555555;
+    margin-bottom: 12px;
+}
+
+.easy-user-auth-info {
+    font-size: 12px;
+    color: #666666;
+}
+
+.easy-user-auth-alert {
+    padding: 8px 12px;
+    background-color: #fee2e2;
+    border: 1px solid #fca5a5;
+    color: #b91c1c;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.easy-user-auth-loading {
+    font-size: 14px;
+    text-align: center;
+    color: #666666;
+    padding: 8px 0;
+}
