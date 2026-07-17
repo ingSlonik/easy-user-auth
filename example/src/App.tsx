@@ -14,39 +14,11 @@ const defaultUser: UserProfile = {
   role: "user",
 };
 
-// Czech translation dictionary for Czech localization
-// English translation dictionary
+// Example of a partial dictionary override (Czech localization for main buttons)
 const dict = {
-  userDialogLoggedInHeader: "You have logged in successfully.",
-  logOut: "Log out",
-  logIn: "Log in",
-  userCreateAccount: "Create account",
-  userDialogText: "Enter your credentials below:",
-  mail: "Email",
-  password: "Password",
-  passwordAgain: "Confirm password",
-  userWrongPasswordMatch: "Passwords do not match.",
-  userWrongPasswordLength: "Password must be at least 6 characters.",
-  userWrongMailFormat: "Invalid email format.",
-  userWrongFill: "Please fill in all fields.",
-  userErrorRegister: "Registration failed. Email might already be taken.",
-  userErrorLogIn: "Invalid email or password.",
-  registerIn: "Register",
-  allRight: "Processing",
-  userForgottenPasswordButton: "Forgot password?",
-  userForgottenPassword: "Recover Password",
-  userForgottenPasswordSuccess: "A recovery link has been sent (see below).",
-  close: "Close",
-  userWrongSendMail: "We couldn't send the recovery email.",
-  userForgottenPasswordError: "Something went wrong.",
-  userForgottenPasswordErrorSend: "Send recovery link",
-  userForgottenPasswordErrorChange: "Unable to change password. The link might be invalid or expired.",
-  userForgottenPasswordSuccessChange: "Password successfully updated. You are logged in.",
-  backToHome: "Back to Home",
-  userForgottenPasswordChange: "Change Password",
-  change: "Save new password",
-  userNamePlaceholder: "Your Name",
-  save: "Save",
+  logIn: "Přihlásit se",
+  logOut: "Odhlásit se",
+  userCreateAccount: "Vytvořit účet",
 };
 
 export type AuthMode = "cookies" | "headers";

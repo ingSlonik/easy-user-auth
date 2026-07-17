@@ -1,6 +1,41 @@
 import React, { createContext, useContext, useEffect, useState, useMemo } from "react";
 import { UUID, UserClient } from "./types.js";
 
+export const defaultDict = {
+    userDialogLoggedInHeader: "You have logged in successfully.",
+    logOut: "Log out",
+    logIn: "Log in",
+    userCreateAccount: "Create account",
+    userDialogText: "Enter your credentials below:",
+    mail: "Email",
+    password: "Password",
+    passwordAgain: "Confirm password",
+    userWrongPasswordMatch: "Passwords do not match.",
+    userWrongPasswordLength: "Password must be at least 6 characters.",
+    userWrongMailFormat: "Invalid email format.",
+    userWrongFill: "Please fill in all fields.",
+    userErrorRegister: "Registration failed. Email might already be taken.",
+    userErrorLogIn: "Invalid email or password.",
+    registerIn: "Register",
+    allRight: "Processing",
+    userForgottenPasswordButton: "Forgot password?",
+    userForgottenPassword: "Recover Password",
+    userForgottenPasswordSuccess: "A recovery link has been sent (see below).",
+    close: "Close",
+    userWrongSendMail: "We couldn't send the recovery email.",
+    userForgottenPasswordError: "Something went wrong.",
+    userForgottenPasswordErrorSend: "Send recovery link",
+    userForgottenPasswordErrorChange: "Unable to change password. The link might be invalid or expired.",
+    userForgottenPasswordSuccessChange: "Password successfully updated. You are logged in.",
+    backToHome: "Back to Home",
+    userForgottenPasswordChange: "Change Password",
+    change: "Save new password",
+    userNamePlaceholder: "Your Name",
+    save: "Save",
+};
+
+export type UserDictionary = typeof defaultDict;
+
 export type UserContextType<TUser> = {
     userId: UUID;
     user: TUser;
@@ -13,7 +48,7 @@ export type UserContextType<TUser> = {
     setDialogMail: (mail: string) => void;
     setUser: (user: TUser) => void;
     loginUser: (user: null | UserClient<TUser>) => void;
-    dict: UserProviderProps<TUser>["dict"];
+    dict: UserDictionary;
     api: EasyLoginClient<TUser>;
 };
 
@@ -37,38 +72,7 @@ export type UserProviderProps<TUser> = {
     defaultUser: TUser;
     userStoreKey?: string;
     userSecretStoreKey?: string;
-    dict: {
-        userDialogLoggedInHeader: string;
-        logOut: string;
-        logIn: string;
-        userCreateAccount: string;
-        userDialogText: string;
-        mail: string;
-        password: string;
-        passwordAgain: string;
-        userWrongPasswordMatch: string;
-        userWrongPasswordLength: string;
-        userWrongMailFormat: string;
-        userWrongFill: string;
-        userErrorRegister: string;
-        userErrorLogIn: string;
-        registerIn: string;
-        allRight: string;
-        userForgottenPasswordButton: string;
-        userForgottenPassword: string;
-        userForgottenPasswordSuccess: string;
-        close: string;
-        userWrongSendMail: string;
-        userForgottenPasswordError: string;
-        userForgottenPasswordErrorSend: string;
-        userForgottenPasswordErrorChange: string;
-        userForgottenPasswordSuccessChange: string;
-        backToHome: string;
-        userForgottenPasswordChange: string;
-        change: string;
-        userNamePlaceholder: string;
-        save: string;
-    };
+    dict?: Partial<UserDictionary>;
     renderDialog?: (show: boolean, onClose: () => void, children: React.ReactNode) => React.ReactNode;
 };
 
@@ -80,7 +84,7 @@ export function UserProvider<TUser>({
     defaultUser,
     userStoreKey = "user",
     userSecretStoreKey = "user-secrets",
-    dict,
+    dict: customDict,
     renderDialog,
 }: UserProviderProps<TUser>) {
     const api = useMemo(() => {
@@ -91,6 +95,10 @@ export function UserProvider<TUser>({
             userSecretStoreKey,
         });
     }, [providedApi, serverUrl, credentials, userSecretStoreKey]);
+
+    const dict = useMemo(() => {
+        return { ...defaultDict, ...customDict };
+    }, [customDict]);
 
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [showUserDialog, setShowUserDialog] = useState(false);
@@ -230,24 +238,36 @@ export function UserProvider<TUser>({
                     </div>
                 )
             )}
-            {showForgotDialog && (
-                <div className="easy-user-auth-overlay">
-                    <div className="easy-user-auth-modal">
-                        <button
-                            className="easy-user-auth-close-btn"
-                            onClick={() => setShowForgotDialog(false)}
-                        >
-                            &times;
-                        </button>
-                        <ForgottenPasswordForm
-                            initialMail={dialogMail}
-                            onBack={() => {
-                                setShowForgotDialog(false);
-                                setShowUserDialog(true);
-                            }}
-                        />
+            {renderDialog ? (
+                renderDialog(showForgotDialog, () => setShowForgotDialog(false), (
+                    <ForgottenPasswordForm
+                        initialMail={dialogMail}
+                        onBack={() => {
+                            setShowForgotDialog(false);
+                            setShowUserDialog(true);
+                        }}
+                    />
+                ))
+            ) : (
+                showForgotDialog && (
+                    <div className="easy-user-auth-overlay">
+                        <div className="easy-user-auth-modal">
+                            <button
+                                className="easy-user-auth-close-btn"
+                                onClick={() => setShowForgotDialog(false)}
+                            >
+                                &times;
+                            </button>
+                            <ForgottenPasswordForm
+                                initialMail={dialogMail}
+                                onBack={() => {
+                                    setShowForgotDialog(false);
+                                    setShowUserDialog(true);
+                                }}
+                            />
+                        </div>
                     </div>
-                </div>
+                )
             )}
         </UserContext.Provider>
     );

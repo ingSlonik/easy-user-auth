@@ -155,6 +155,7 @@ By default, `<UserProvider>` will automatically instantiate the API client inter
 - `serverUrl` (optional, defaults to `""` for relative path requests).
 - `credentials` (optional, defaults to `"include"`). Set to `"omit"` if you want to use header-only token validation.
 - `userSecretStoreKey` (optional, defaults to `"user-secrets"`). The storage key under which credentials are automatically saved and read. Note: This is only used when `credentials` is set to `"omit"`.
+- `dict` (optional). Custom dictionary for translations or overriding UI text. You can pass a partial dictionary (e.g., `{ logIn: "Sign In" }`) to override only specific labels.
 
 ```tsx
 import React from "react";
@@ -167,44 +168,11 @@ const defaultUser: UserProfile = {
     role: "user",
 };
 
-const dict = {
-    userDialogLoggedInHeader: "You have logged in successfully.",
-    logOut: "Log out",
-    logIn: "Log in",
-    userCreateAccount: "Create account",
-    userDialogText: "Enter your credentials below:",
-    mail: "Email",
-    password: "Password",
-    passwordAgain: "Confirm password",
-    userWrongPasswordMatch: "Passwords do not match.",
-    userWrongPasswordLength: "Password must be at least 6 characters.",
-    userWrongMailFormat: "Invalid email format.",
-    userWrongFill: "Please fill in all fields.",
-    userErrorRegister: "Registration failed. Email might already be taken.",
-    userErrorLogIn: "Invalid email or password.",
-    registerIn: "Register",
-    allRight: "Processing",
-    userForgottenPasswordButton: "Forgot password?",
-    userForgottenPassword: "Recover Password",
-    userForgottenPasswordSuccess: "A recovery link has been sent (see below).",
-    close: "Close",
-    userWrongSendMail: "We couldn't send the recovery email.",
-    userForgottenPasswordError: "Something went wrong.",
-    userForgottenPasswordErrorSend: "Send recovery link",
-    userForgottenPasswordErrorChange: "Unable to change password. The link might be invalid or expired.",
-    userForgottenPasswordSuccessChange: "Password successfully updated. You are logged in.",
-    backToHome: "Back to Home",
-    userForgottenPasswordChange: "Change Password",
-    change: "Save new password",
-    userNamePlaceholder: "Your Name",
-    save: "Save",
-};
-
 export default function App() {
     return (
         <UserProvider<UserProfile>
             defaultUser={defaultUser}
-            dict={dict}
+            // dict={{ logIn: "Sign In" }}       // Optional: override specific text/labels
             // serverUrl="http://localhost:1111" // Optional: custom api url
             // credentials="omit"                 // Optional: set to "omit" for header-only auth (automatic token mapping)
         >
