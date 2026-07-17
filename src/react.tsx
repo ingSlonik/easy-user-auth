@@ -74,6 +74,7 @@ export type UserProviderProps<TUser> = {
     userSecretStoreKey?: string;
     dict?: Partial<UserDictionary>;
     renderDialog?: (show: boolean, onClose: () => void, children: React.ReactNode) => React.ReactNode;
+    renderTabs?: UserDialogProps["renderTabs"];
 };
 
 export function UserProvider<TUser>({
@@ -86,6 +87,7 @@ export function UserProvider<TUser>({
     userSecretStoreKey = "user-secrets",
     dict: customDict,
     renderDialog,
+    renderTabs,
 }: UserProviderProps<TUser>) {
     const api = useMemo(() => {
         if (providedApi) return providedApi;
@@ -222,7 +224,7 @@ export function UserProvider<TUser>({
         >
             {children}
             {renderDialog ? (
-                renderDialog(showUserDialog, () => setShowUserDialog(false), <UserDialog />)
+                renderDialog(showUserDialog, () => setShowUserDialog(false), <UserDialog renderTabs={renderTabs} />)
             ) : (
                 showUserDialog && (
                     <div className="easy-user-auth-overlay">
@@ -233,7 +235,7 @@ export function UserProvider<TUser>({
                             >
                                 &times;
                             </button>
-                            <UserDialog />
+                            <UserDialog renderTabs={renderTabs} />
                         </div>
                     </div>
                 )

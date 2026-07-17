@@ -172,9 +172,6 @@ export default function App() {
     return (
         <UserProvider<UserProfile>
             defaultUser={defaultUser}
-            // dict={{ logIn: "Sign In" }}       // Optional: override specific text/labels
-            // serverUrl="http://localhost:1111" // Optional: custom api url
-            // credentials="omit"                 // Optional: set to "omit" for header-only auth (automatic token mapping)
         >
             <MyLayout />
         </UserProvider>
