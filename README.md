@@ -9,8 +9,10 @@ A lightweight, secure, and generic user authentication, registration, and passwo
   - Short-lived `accessToken` (15 minutes) + long-lived `refreshToken` (30 days) stored as `HttpOnly; SameSite=Lax; Secure` cookies.
   - Automatic on-the-fly token rotation and reuse detection.
   - Automatic silent refresh handled completely server-side.
+- **Mass Assignment Protection**: Automatic stripping of protected internal fields (`_id`, `password`, `refreshTokens`) from input payloads.
 - **CSRF Protection**: Native validation verifying request `Origin` and `Referer` headers on all state-modifying requests when cookies are used.
-- **Argon2 Hashing**: Standard high-security password hashing.
+- **Argon2 Hashing & SHA-256 Token Protection**: Standard high-security password hashing and hashed recovery/refresh tokens.
+- **Terms & Conditions Agreement**: Native support for configurable mandatory Terms & Conditions checkboxes in registration forms, validated both client-side and server-side.
 - **Mailing Support**: Dynamic forgotten password flow integrating with any custom email sender.
 - **React Support**: Complete React Context Provider, hooks (`useUser`), and modular styled forms.
 
@@ -56,6 +58,7 @@ import { sendMail } from "./mail"; // Your email helper
 const authServer = new EasyLoginServer<UserProfile>({
     jwtSecret: process.env.JWT_SECRET || "fallback-secret-key",
     secureCookies: process.env.NODE_ENV === "production",
+    requireTerms: true, // Optional: enforce mandatory Terms & Conditions acceptance on registration
     db: {
         insertUser: async (user) => db.insert("user", user),
         getUserById: async (id) => db.select("user", id),
@@ -64,6 +67,7 @@ const authServer = new EasyLoginServer<UserProfile>({
             return users.find(u => u.mail === mail) || null;
         },
         getUserByRecoveryToken: async (token) => {
+            // Note: 'token' passed here is already hashed with SHA-256
             const users = await db.selectArray("user");
             return users.find(u => u.passwordRecovery?.token === token) || null;
         },
@@ -84,7 +88,7 @@ const authServer = new EasyLoginServer<UserProfile>({
 const app = express();
 app.use(express.json());
 
-// Register all authentication routes at once (e.g. /api/login, /api/register, /api/user, etc.)
+// Register all authentication routes at once (e.g. /api/login, /api/register, /api/user, /api/change-password, etc.)
 authServer.registerExpressRoutes(app);
 
 // Protecting routes
@@ -114,13 +118,14 @@ const authClient = new EasyLoginClient<UserProfile>({
     userSecretStoreKey: "user-secrets" // Optional: custom storage key for token loading (only used when credentials is "omit")
 });
 
-// 1. Register a new user
+// 1. Register a new user (returns user profile along with userId and mail)
 const [registeredUser, regErr] = await authClient.addRegistration({
     name: "John Doe",
     avatar: "avatar.png",
     role: "user",
     mail: "john@doe.com",
-    password: "securepassword"
+    password: "securepassword",
+    termsAccepted: true
 });
 
 // 2. Log in
@@ -132,7 +137,13 @@ const [loggedInUser, loginErr] = await authClient.addLogin({
 // 3. Get active session profile (automatically reads and verifies httpOnly cookies)
 const [activeSession, sessionErr] = await authClient.getUser();
 
-// 4. Update profile fields
+// 4. Change password (authenticated)
+await authClient.changePassword({
+    currentPassword: "oldpassword",
+    newPassword: "newsecurepassword"
+});
+
+// 5. Update profile fields
 if (activeSession) {
     await authClient.updateUser({
         ...activeSession,
@@ -140,7 +151,7 @@ if (activeSession) {
     });
 }
 
-// 5. Log out
+// 6. Log out
 await authClient.logout();
 ```
 
@@ -154,8 +165,10 @@ Wrap your application structure inside `UserProvider`.
 By default, `<UserProvider>` will automatically instantiate the API client internally. All configuration props are optional:
 - `serverUrl` (optional, defaults to `""` for relative path requests).
 - `credentials` (optional, defaults to `"include"`). Set to `"omit"` if you want to use header-only token validation.
-- `userSecretStoreKey` (optional, defaults to `"user-secrets"`). The storage key under which credentials are automatically saved and read. Note: This is only used when `credentials` is set to `"omit"`.
-- `dict` (optional). Custom dictionary for translations or overriding UI text. You can pass a partial dictionary (e.g., `{ logIn: "Sign In" }`) to override only specific labels.
+- `userSecretStoreKey` (optional, defaults to `"user-secrets"`). The storage key under which credentials are saved. Note: Only used when `credentials` is set to `"omit"`.
+- `requireTerms` (optional, boolean). Requires users to check the Terms & Conditions checkbox before registering.
+- `termsLabel` (optional, `ReactNode`). Custom label text or link component for the Terms & Conditions checkbox (e.g. `<span>I accept the <a href="/terms">Terms</a></span>`).
+- `dict` (optional). Custom dictionary for translations or overriding UI text. You can pass a partial dictionary (e.g., `{ termsAgreement: "I accept the terms" }`) to override specific labels.
 
 ```tsx
 import React from "react";
@@ -196,7 +209,7 @@ export function ProfileWidget() {
 
     return (
         <div>
-            <p>Welcome, {user.name}!</p>
+            <p>Welcome, {user.name}! ({user.mail})</p>
             <button onClick={() => setUser({ ...user, name: "New Name" })}>
                 Update Profile Name
             </button>
@@ -279,7 +292,7 @@ import "easy-user-auth/style.css";
 ##### Available CSS Class Names
 For custom CSS styling and overrides, the following class names are exposed on the components:
 
-- `.easy-user-auth-overlay` — Backdrop backdrop overlay container
+- `.easy-user-auth-overlay` — Backdrop overlay container
 - `.easy-user-auth-modal` — Modal content wrapper box
 - `.easy-user-auth-close-btn` — Modal absolute top-right close button (`&times;`)
 - `.easy-user-auth-tabs` — Tabs switcher container row
@@ -287,6 +300,8 @@ For custom CSS styling and overrides, the following class names are exposed on t
 - `.easy-user-auth-tab-active` — Active/selected tab button
 - `.easy-user-auth-form` — Core `<form>` wrappers
 - `.easy-user-auth-form-input` — Label and input wrapping container block
+- `.easy-user-auth-checkbox` — Checkbox input element
+- `.easy-user-auth-checkbox-label` — Label text for terms and checkboxes
 - `.easy-user-auth-label` — Form field labels
 - `.easy-user-auth-input` — Text/Password form controls (`<input>`)
 - `.easy-user-auth-submit-btn` — Primary action buttons (Login / Register / Recover)
@@ -304,5 +319,25 @@ For custom CSS styling and overrides, the following class names are exposed on t
 ## Security Best Practices
 
 1. **Production Configuration**: Always ensure `secureCookies` is set to `true` (default in production environments). This restricts cookies to HTTPS connections.
-2. **Cross-Origin Environments**: In local development where the frontend and API servers run on different ports (e.g. Parcel at `1234` and Express at `1111`), browser security block cookies unless `credentials: "include"` is set on both `fetch` configurations and CORS is configured correctly. For this reason, the library supports using the `Authorization: bearer <token>` header as a secondary fallback.
+2. **Cross-Origin Environments**: In local development where the frontend and API servers run on different ports (e.g. Vite at `5173` and Express at `3001`), browser security blocks cookies unless `credentials: "include"` is set on both `fetch` configurations and CORS is configured correctly (`credentials: true`). For header-only auth, set `credentials: "omit"`.
 3. **CSRF Validation**: When executing custom authenticated actions outside the standard API client (e.g. custom endpoints), always execute `authServer.checkLogin(req, res)` as it performs automatic Origin-validation to prevent Cross-Site Request Forgery.
+4. **Nginx / Reverse Proxy Configuration**:
+   When proxying requests through Nginx (or another reverse proxy) to your Node.js application, ensure that Nginx forwards the original request headers (`Host`, `X-Forwarded-Host`, `X-Forwarded-Proto`, `Cookie`). This is essential for CSRF origin verification, cookie setting, and domain matching to function correctly:
+
+   ```nginx
+   location /api/ {
+       proxy_pass http://localhost:3001;
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header X-Forwarded-Proto $scheme;
+       proxy_set_header X-Forwarded-Host $host;
+       
+       # Pass cookies transparently
+       proxy_pass_header Set-Cookie;
+   }
+   ```
+
+   > **Note on `cookieDomain`**: If your API runs on a subdomain (e.g. `api.example.com`) and your web frontend runs on `example.com`, pass `cookieDomain: ".example.com"` when instantiating `EasyLoginServer` so the authentication cookies are shared across all subdomains.
+
+

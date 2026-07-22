@@ -1,4 +1,4 @@
-import { UserLogin, UserClient, Lang } from "./types.js";
+import { UserLogin, UserRegistration, UserClient, Lang } from "./types.js";
 
 /**
  * Configuration options for the EasyLogin browser API client.
@@ -28,7 +28,7 @@ export class EasyLoginClient<TUser> {
     }
 
     private async request<TResponse>(endpoint: string, method: "GET" | "POST" | "PATCH", body?: any): Promise<[TResponse | null, Error | null]> {
-        const url = `${this.serverUrl}${endpoint}`;
+        let url = `${this.serverUrl}${endpoint}`;
         
         const headers: HeadersInit = {
             "Content-Type": "application/json",
@@ -57,6 +57,9 @@ export class EasyLoginClient<TUser> {
                 const query = Object.entries(body)
                     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(JSON.stringify(v))}`)
                     .join("&");
+                if (query) {
+                    url += (url.includes("?") ? "&" : "?") + query;
+                }
                 options.body = undefined;
             } else {
                 options.body = JSON.stringify(body);
@@ -105,7 +108,7 @@ export class EasyLoginClient<TUser> {
      * @param params Combined user profile fields and login credentials.
      * @returns A promise resolving to a tuple [UserClient, Error].
      */
-    async addRegistration(params: TUser & UserLogin): Promise<[UserClient<TUser> | null, Error | null]> {
+    async addRegistration(params: TUser & UserRegistration): Promise<[UserClient<TUser> | null, Error | null]> {
         return this.request<UserClient<TUser>>("/api/register", "POST", params);
     }
 
@@ -131,6 +134,14 @@ export class EasyLoginClient<TUser> {
      */
     async updateForgottenPassword(resetParams: { token: string; password: string }): Promise<[UserClient<TUser> | null, Error | null]> {
         return this.request<UserClient<TUser>>("/api/reset-password", "POST", resetParams);
+    }
+
+    /**
+     * Changes an authenticated user's password.
+     * @param params Object containing current password and new password.
+     */
+    async changePassword(params: { currentPassword: string; newPassword: string }): Promise<[UserClient<TUser> | null, Error | null]> {
+        return this.request<UserClient<TUser>>("/api/change-password", "POST", params);
     }
 
     /**

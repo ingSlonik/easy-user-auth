@@ -44,6 +44,8 @@ export type UserDB<TUser> = TUser & {
 export type UserClient<TUser> = TUser & {
     /** The authenticated user's ID. */
     userId: string;
+    /** User's primary email address. */
+    mail: string;
     /** Active JSON Web Token (JWT) access token for the session. */
     token: string;
 };
@@ -56,6 +58,14 @@ export type UserLogin = {
     mail: string;
     /** User's plain text password. */
     password: string;
+};
+
+/**
+ * Parameters required to register a user.
+ */
+export type UserRegistration = UserLogin & {
+    /** Whether the user accepted the terms and conditions. */
+    termsAccepted?: boolean;
 };
 
 /**

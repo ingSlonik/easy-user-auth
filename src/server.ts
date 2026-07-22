@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import argon2 from "argon2";
 import { createHash, randomUUID } from "crypto";
 
-import { UserDB, UserClient, UserLogin, UUID, Lang } from "./types.js";
+import { UserDB, UserClient, UserLogin, UserRegistration, UUID, Lang } from "./types.js";
 
 // Validation Schemas
 export const MailScheme = v.pipe(v.string(), v.email(), v.maxLength(50));
@@ -15,9 +15,20 @@ export const UserLoginSchema = v.object({
     password: v.pipe(v.string(), v.minLength(6), v.maxLength(50)),
 });
 
+export const UserRegistrationSchema = v.object({
+    mail: MailScheme,
+    password: v.pipe(v.string(), v.minLength(6), v.maxLength(50)),
+    termsAccepted: v.optional(v.boolean()),
+});
+
 // Helper for hashing refresh tokens
 function hashRefreshToken(token: string): string {
     return createHash("sha256").update(token).digest("hex");
+}
+
+// Helper for hashing recovery tokens
+function hashRecoveryToken(token: string): string {
+    return createHash("sha256").update("recovery:" + token).digest("hex");
 }
 
 export type EasyLoginServerConfig<TUser> = {
@@ -32,6 +43,7 @@ export type EasyLoginServerConfig<TUser> = {
     mailSender: (lang: string, mailTo: string, token: string) => Promise<void>;
     secureCookies?: boolean;
     cookieDomain?: string;
+    requireTerms?: boolean;
 };
 
 export class APIError extends Error {
@@ -49,6 +61,7 @@ export class EasyLoginServer<TUser> {
     private mailSender: EasyLoginServerConfig<TUser>["mailSender"];
     private secureCookies: boolean;
     private cookieDomain?: string;
+    private requireTerms: boolean;
 
     constructor(config: EasyLoginServerConfig<TUser>) {
         this.db = config.db;
@@ -56,6 +69,7 @@ export class EasyLoginServer<TUser> {
         this.mailSender = config.mailSender;
         this.secureCookies = config.secureCookies ?? (process.env.NODE_ENV === "production");
         this.cookieDomain = config.cookieDomain;
+        this.requireTerms = config.requireTerms ?? false;
     }
 
     // Helper: Parse cookie from Request headers
@@ -244,6 +258,7 @@ export class EasyLoginServer<TUser> {
 
         return {
             userId: auth.userId,
+            mail: user.mail,
             token: accessToken || "",
             ...(profileData as unknown as TUser),
         };
@@ -268,7 +283,7 @@ export class EasyLoginServer<TUser> {
             } else {
                 // Cookie-less fallback
                 token = jwt.sign(
-                    { sub: user._id, name, mail, iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60 },
+                    { sub: user._id, name, mail, iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 15 * 60 },
                     this.jwtSecret
                 );
             }
@@ -282,6 +297,7 @@ export class EasyLoginServer<TUser> {
 
             return {
                 userId: user._id,
+                mail: user.mail,
                 token,
                 ...(profileData as unknown as TUser),
             };
@@ -291,12 +307,17 @@ export class EasyLoginServer<TUser> {
     }
 
     // 3. addRegistration
-    async addRegistration(params: TUser & UserLogin, req: Request, res?: Response): Promise<UserClient<TUser>> {
+    async addRegistration(params: TUser & UserRegistration, req: Request, res?: Response): Promise<UserClient<TUser>> {
         this.checkCSRF(req);
-        const { mail, password } = v.parse(UserLoginSchema, params);
+        const parsed = v.parse(UserRegistrationSchema, params);
+        const { mail, password, termsAccepted } = parsed;
 
-        // Extract generic profile properties
-        const { mail: _, password: __, ...profileFields } = params as any;
+        if (this.requireTerms && !termsAccepted) {
+            throw new APIError("Terms and conditions must be accepted", 400);
+        }
+
+        // Extract generic profile properties and strip system/internal fields (Mass Assignment protection)
+        const { mail: _, password: __, termsAccepted: ___, _id: ____, passwordRecovery: _____, refreshTokens: ______, ...profileFields } = params as any;
         const profileData = profileFields as TUser;
 
         const existingUser = await this.db.getUserByMail(mail);
@@ -333,13 +354,14 @@ export class EasyLoginServer<TUser> {
             }
         } else {
             token = jwt.sign(
-                { sub: userId, name, mail, iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60 },
+                { sub: userId, name, mail, iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 15 * 60 },
                 this.jwtSecret
             );
         }
 
         return {
             userId,
+            mail,
             token,
             ...profileData,
         };
@@ -348,59 +370,64 @@ export class EasyLoginServer<TUser> {
     // 4. updateUser
     async updateUser(userParams: TUser, req: Request): Promise<void> {
         this.checkCSRF(req);
-        const profileData = userParams;
         const auth = await this.checkLogin(req);
 
         const user = await this.db.getUserById(auth.userId);
         if (!user) throw new APIError("User not found", 404);
 
+        // Strip protected system fields to prevent Mass Assignment
+        const { _id: _, password: __, passwordRecovery: ___, refreshTokens: ____, mail: _____, ...allowedProfileData } = userParams as any;
+
         await this.db.updateUser(auth.userId, {
             ...user,
-            ...profileData,
+            ...allowedProfileData,
         });
     }
 
     // 5. addForgottenPassword
     async addForgottenPassword({ lang, mail }: { lang: Lang; mail: string }): Promise<{ message: "success" | "unknown-mail" }> {
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise(resolve => setTimeout(resolve, 500));
 
         const user = await this.db.getUserByMail(mail);
         if (!user) {
             return { message: "unknown-mail" };
         }
 
-        const dateTo = new Date();
-        dateTo.setDate(dateTo.getDate() + 1);
-
-        const token = randomUUID();
-        const formattedDate = dateTo.toISOString().slice(0, 10);
+        const dateTo = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h validity
+        const rawToken = randomUUID();
+        const hashedToken = hashRecoveryToken(rawToken);
 
         await this.db.updateUser(user._id, {
             ...user,
             passwordRecovery: {
                 lang,
-                dateTo: formattedDate,
-                token,
+                dateTo: dateTo.toISOString(),
+                token: hashedToken,
             },
         });
 
-        await this.mailSender(lang, mail, token);
-
-        return { message: "success" };
+        try {
+            await this.mailSender(lang, mail, rawToken);
+            return { message: "success" };
+        } catch (err) {
+            return { message: "unknown-mail" };
+        }
     }
 
     // 6. updateForgottenPassword
     async updateForgottenPassword({ token, password }: { token: string; password: string }, req: Request, res?: Response): Promise<UserClient<TUser>> {
         this.checkCSRF(req);
-        if (password.length < 6) throw new APIError("Password must be at least 6 characters long", 400);
+        if (!password || password.length < 6 || password.length > 50) {
+            throw new APIError("Password must be between 6 and 50 characters long", 400);
+        }
 
-        const user = await this.db.getUserByRecoveryToken(token);
-        if (!user) {
+        const hashedToken = hashRecoveryToken(token);
+        const user = await this.db.getUserByRecoveryToken(hashedToken);
+        if (!user || !user.passwordRecovery) {
             throw new APIError("Invalid token", 400);
         }
 
-        const dateNow = new Date().toISOString().slice(0, 10);
-        if (user.passwordRecovery!.dateTo < dateNow) {
+        if (new Date(user.passwordRecovery.dateTo).getTime() < Date.now()) {
             throw new APIError("Token expired", 400);
         }
 
@@ -408,15 +435,16 @@ export class EasyLoginServer<TUser> {
         const name = (user as any).name || "";
 
         let authToken = "";
-        let refreshTokens = user.refreshTokens || [];
+        // Revoke all existing sessions/tokens on password reset for security
+        let refreshTokens: string[] = [];
 
         if (res) {
-            const cookiesResult = this.setAuthCookies(res, user._id, name, user.mail, refreshTokens);
+            const cookiesResult = this.setAuthCookies(res, user._id, name, user.mail, []);
             authToken = cookiesResult.token;
             refreshTokens = cookiesResult.refreshTokens;
         } else {
             authToken = jwt.sign(
-                { sub: user._id, name, mail: user.mail, iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60 },
+                { sub: user._id, name, mail: user.mail, iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 15 * 60 },
                 this.jwtSecret
             );
         }
@@ -432,6 +460,55 @@ export class EasyLoginServer<TUser> {
 
         return {
             userId: user._id,
+            mail: user.mail,
+            token: authToken,
+            ...(profileData as unknown as TUser),
+        };
+    }
+
+    // 6b. changePassword (for authenticated users)
+    async changePassword({ currentPassword, newPassword }: { currentPassword: string; newPassword: string }, req: Request, res?: Response): Promise<UserClient<TUser>> {
+        this.checkCSRF(req);
+        if (!newPassword || newPassword.length < 6 || newPassword.length > 50) {
+            throw new APIError("New password must be between 6 and 50 characters long", 400);
+        }
+
+        const auth = await this.checkLogin(req, res);
+        const user = await this.db.getUserById(auth.userId);
+        if (!user) throw new APIError("User not found", 404);
+
+        const isValid = await argon2.verify(user.password, currentPassword);
+        if (!isValid) throw new APIError("Invalid current password", 400);
+
+        const passwordHash = await argon2.hash(newPassword);
+        const name = (user as any).name || "";
+
+        let authToken = "";
+        let refreshTokens: string[] = [];
+
+        if (res) {
+            const cookiesResult = this.setAuthCookies(res, user._id, name, user.mail, []);
+            authToken = cookiesResult.token;
+            refreshTokens = cookiesResult.refreshTokens;
+        } else {
+            authToken = jwt.sign(
+                { sub: user._id, name, mail: user.mail, iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 15 * 60 },
+                this.jwtSecret
+            );
+        }
+
+        await this.db.updateUser(user._id, {
+            ...user,
+            password: passwordHash,
+            passwordRecovery: null,
+            refreshTokens,
+        });
+
+        const { password: _, refreshTokens: __, passwordRecovery: ___, ...profileData } = user;
+
+        return {
+            userId: user._id,
+            mail: user.mail,
             token: authToken,
             ...(profileData as unknown as TUser),
         };
@@ -509,8 +586,24 @@ export class EasyLoginServer<TUser> {
     // Single function route registration for Express apps
     registerExpressRoutes(app: any, prefix = "/api") {
         const sendError = (res: Response, e: any) => {
-            const status = e && typeof e === "object" && typeof e.status === "number" ? e.status : 400;
-            const message = e && typeof e === "object" && typeof e.message === "string" ? e.message : String(e);
+            let status = 400;
+            let message = "An error occurred";
+
+            if (e && typeof e === "object") {
+                if (typeof e.status === "number") {
+                    status = e.status;
+                }
+                if (typeof e.message === "string") {
+                    message = e.message;
+                }
+                // Format Valibot error issues cleanly if present
+                if (Array.isArray(e.issues) && e.issues.length > 0) {
+                    message = e.issues.map((i: any) => i.message || i.reason).join("; ");
+                }
+            } else if (typeof e === "string") {
+                message = e;
+            }
+
             res.status(status).json({ message });
         };
 
@@ -562,6 +655,15 @@ export class EasyLoginServer<TUser> {
         app.post(`${prefix}/reset-password`, async (req: Request, res: Response) => {
             try {
                 const result = await this.updateForgottenPassword(req.body, req, res);
+                res.json(result);
+            } catch (e) {
+                sendError(res, e);
+            }
+        });
+
+        app.post(`${prefix}/change-password`, async (req: Request, res: Response) => {
+            try {
+                const result = await this.changePassword(req.body, req, res);
                 res.json(result);
             } catch (e) {
                 sendError(res, e);

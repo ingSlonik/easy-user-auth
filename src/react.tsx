@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useMemo } from "react";
+import React, { createContext, useContext, useEffect, useState, useMemo, useRef } from "react";
 import { UUID, UserClient } from "./types.js";
 
 export const defaultDict = {
@@ -17,7 +17,7 @@ export const defaultDict = {
     userErrorRegister: "Registration failed. Email might already be taken.",
     userErrorLogIn: "Invalid email or password.",
     registerIn: "Register",
-    allRight: "Processing",
+    allRight: "",
     userForgottenPasswordButton: "Forgot password?",
     userForgottenPassword: "Recover Password",
     userForgottenPasswordSuccess: "A recovery link has been sent (see below).",
@@ -32,6 +32,8 @@ export const defaultDict = {
     change: "Save new password",
     userNamePlaceholder: "Your Name",
     save: "Save",
+    termsAgreement: "I agree to the Terms & Conditions",
+    termsRequiredError: "You must accept the Terms & Conditions to register.",
 };
 
 export type UserDictionary = typeof defaultDict;
@@ -50,6 +52,8 @@ export type UserContextType<TUser> = {
     loginUser: (user: null | UserClient<TUser>) => void;
     dict: UserDictionary;
     api: EasyLoginClient<TUser>;
+    requireTerms?: boolean;
+    termsLabel?: React.ReactNode;
 };
 
 const UserContext = createContext<UserContextType<any> | undefined>(undefined);
@@ -73,6 +77,8 @@ export type UserProviderProps<TUser> = {
     userStoreKey?: string;
     userSecretStoreKey?: string;
     dict?: Partial<UserDictionary>;
+    requireTerms?: boolean;
+    termsLabel?: React.ReactNode;
     renderDialog?: (show: boolean, onClose: () => void, children: React.ReactNode) => React.ReactNode;
     renderTabs?: UserDialogProps["renderTabs"];
 };
@@ -86,6 +92,8 @@ export function UserProvider<TUser>({
     userStoreKey = "user",
     userSecretStoreKey = "user-secrets",
     dict: customDict,
+    requireTerms,
+    termsLabel,
     renderDialog,
     renderTabs,
 }: UserProviderProps<TUser>) {
@@ -126,22 +134,28 @@ export function UserProvider<TUser>({
             if (cached) {
                 setUserState(JSON.parse(cached));
             }
-        } catch (_) {}
+        } catch (_) { }
     }, [userStoreKey]);
+
+    // Ref for debounce timer to prevent leaks
+    const updateDebounceRef = useRef<any>(null);
+    useEffect(() => {
+        return () => {
+            if (updateDebounceRef.current) clearTimeout(updateDebounceRef.current);
+        };
+    }, []);
 
     // Save and sync user profile updates
     const setUser = useMemo(() => {
-        let timeoutId: any;
         return (newUser: TUser) => {
             setUserState(newUser);
             try {
                 localStorage.setItem(userStoreKey, JSON.stringify(newUser));
-            } catch (_) {}
+            } catch (_) { }
 
             if (isLoggedIn) {
-                // Debounced server sync
-                clearTimeout(timeoutId);
-                timeoutId = setTimeout(() => {
+                if (updateDebounceRef.current) clearTimeout(updateDebounceRef.current);
+                updateDebounceRef.current = setTimeout(() => {
                     api.updateUser(newUser);
                 }, 2000);
             }
@@ -163,7 +177,7 @@ export function UserProvider<TUser>({
                 try {
                     localStorage.removeItem(userStoreKey);
                     localStorage.removeItem(userSecretStoreKey);
-                } catch (_) {}
+                } catch (_) { }
                 // Call API logout to clear httpOnly cookies
                 api.logout();
             } else {
@@ -173,13 +187,15 @@ export function UserProvider<TUser>({
                 setUserId(userId);
                 try {
                     localStorage.setItem(userStoreKey, JSON.stringify(profile));
-                    // Store secrets locally (optional/fallback in cookie-based auth)
-                    localStorage.setItem(userSecretStoreKey, JSON.stringify({ userId, token }));
-                } catch (_) {}
+                    // Only store secret token in localStorage when credentials is "omit" (cookie-less mode)
+                    if (credentials === "omit") {
+                        localStorage.setItem(userSecretStoreKey, JSON.stringify({ userId, token }));
+                    }
+                } catch (_) { }
             }
             setShowUserDialog(false);
         };
-    }, [defaultUser, userStoreKey, userSecretStoreKey, api]);
+    }, [defaultUser, userStoreKey, userSecretStoreKey, api, credentials]);
 
     // Check login state on mount
     useEffect(() => {
@@ -220,6 +236,8 @@ export function UserProvider<TUser>({
                 loginUser,
                 dict,
                 api,
+                requireTerms,
+                termsLabel,
             }}
         >
             {children}
@@ -431,10 +449,11 @@ export function LogInForm() {
 
 // Form Component: Register
 export function RegisterForm() {
-    const { user, loginUser, dict, api } = useUser<any>();
+    const { user, loginUser, dict, api, requireTerms, termsLabel } = useUser<any>();
     const [mail, setMail] = useState("");
     const [password, setPassword] = useState("");
     const [passwordAgain, setPasswordAgain] = useState("");
+    const [termsAccepted, setTermsAccepted] = useState(false);
     const [message, setMessage] = useState("");
     const [isSending, setIsSending] = useState(false);
 
@@ -445,20 +464,23 @@ export function RegisterForm() {
         errorFeedback = dict.userWrongPasswordLength;
     } else if (password && passwordAgain && password !== passwordAgain) {
         errorFeedback = dict.userWrongPasswordMatch;
+    } else if (requireTerms && !termsAccepted) {
+        errorFeedback = dict.termsRequiredError;
     }
 
     async function handleSave(e?: React.FormEvent) {
         if (e) e.preventDefault();
-        if (errorFeedback || !mail || !password || !passwordAgain) return;
+        if (errorFeedback || !mail || !password || !passwordAgain || (requireTerms && !termsAccepted)) return;
 
         setIsSending(true);
         setMessage("");
 
-        // Pass the generic profile properties (spread user) plus mail, password
+        // Pass the generic profile properties (spread user) plus mail, password, and termsAccepted
         const [userResult, error] = await api.addRegistration({
             ...user,
             mail,
             password,
+            termsAccepted,
         });
 
         if (error) {
@@ -506,6 +528,22 @@ export function RegisterForm() {
                 />
             </div>
 
+            {requireTerms && (
+                <div className="easy-user-auth-form-input form-checkbox" style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "10px" }}>
+                    <input
+                        type="checkbox"
+                        id="easy-user-auth-terms-checkbox"
+                        className="easy-user-auth-checkbox"
+                        checked={termsAccepted}
+                        onChange={(e) => setTermsAccepted(e.target.checked)}
+                        required
+                    />
+                    <label htmlFor="easy-user-auth-terms-checkbox" className="easy-user-auth-checkbox-label" style={{ fontSize: "14px", cursor: "pointer" }}>
+                        {termsLabel || dict.termsAgreement}
+                    </label>
+                </div>
+            )}
+
             {message && <p className="easy-user-auth-alert alert">{message}</p>}
 
             {isSending ? (
@@ -513,7 +551,7 @@ export function RegisterForm() {
             ) : (
                 <>
                     <p className="easy-user-auth-info info">{errorFeedback || dict.allRight}</p>
-                    <button type="submit" disabled={!!errorFeedback || !mail || !password || !passwordAgain} className="easy-user-auth-submit-btn width">
+                    <button type="submit" disabled={!!errorFeedback || !mail || !password || !passwordAgain || (requireTerms && !termsAccepted)} className="easy-user-auth-submit-btn width">
                         {dict.registerIn}
                     </button>
                 </>
