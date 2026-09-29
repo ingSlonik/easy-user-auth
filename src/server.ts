@@ -354,7 +354,7 @@ export class EasyLoginServer<TUser> {
         if (!user) throw new APIError("User not found", 404);
 
         // Get access token from cookie or regenerate it
-        let accessToken = this.getTokenFromHeader(req) || this.getCookie(req, "accessToken");
+        let accessToken = (req as any)._easyAuthNewAccessToken || this.getTokenFromHeader(req) || this.getCookie(req, "accessToken");
         if (!accessToken && res) {
             // Regenerate
             const name = (user as any).name || "";
@@ -476,9 +476,9 @@ export class EasyLoginServer<TUser> {
     }
 
     // 4. updateUser
-    async updateUser(userParams: TUser, req: Request): Promise<void> {
+    async updateUser(userParams: TUser, req: Request, res?: Response): Promise<void> {
         this.checkCSRF(req);
-        const auth = await this.checkLogin(req);
+        const auth = await this.checkLogin(req, res);
 
         const user = await this.db.getUserById(auth.userId);
         if (!user) throw new APIError("User not found", 404);
@@ -749,7 +749,7 @@ export class EasyLoginServer<TUser> {
 
         app.patch(`${prefix}/user`, async (req: Request, res: Response) => {
             try {
-                await this.updateUser(req.body, req);
+                await this.updateUser(req.body, req, res);
                 res.json({ message: "success" });
             } catch (e) {
                 sendError(res, e);
