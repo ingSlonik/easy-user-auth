@@ -44,7 +44,17 @@ export type EasyLoginServerConfig<TUser> = {
     secureCookies?: boolean;
     cookieDomain?: string;
     requireTerms?: boolean;
+    gracePeriodMs?: number;
 };
+
+export interface RotatedTokenGrace {
+    userId: string;
+    token: string;
+    rawRefreshToken: string;
+    name: string;
+    mail: string;
+    expiresAt: number;
+}
 
 export class APIError extends Error {
     public status: number;
@@ -62,6 +72,10 @@ export class EasyLoginServer<TUser> {
     private secureCookies: boolean;
     private cookieDomain?: string;
     private requireTerms: boolean;
+    private gracePeriodMs: number;
+    private rotationGraceMap = new Map<string, RotatedTokenGrace>();
+    private refreshMutexMap = new Map<string, Promise<RotatedTokenGrace | null>>();
+    private cleanupTimer?: NodeJS.Timeout;
 
     constructor(config: EasyLoginServerConfig<TUser>) {
         this.db = config.db;
@@ -70,6 +84,20 @@ export class EasyLoginServer<TUser> {
         this.secureCookies = config.secureCookies ?? (process.env.NODE_ENV === "production");
         this.cookieDomain = config.cookieDomain;
         this.requireTerms = config.requireTerms ?? false;
+        this.gracePeriodMs = config.gracePeriodMs ?? 60 * 1000;
+
+        this.cleanupTimer = setInterval(() => {
+            this.cleanupGraceMap();
+        }, 60 * 1000);
+        if (this.cleanupTimer.unref) {
+            this.cleanupTimer.unref();
+        }
+    }
+
+    destroy(): void {
+        if (this.cleanupTimer) {
+            clearInterval(this.cleanupTimer);
+        }
     }
 
     // Helper: Parse cookie from Request headers
@@ -90,31 +118,8 @@ export class EasyLoginServer<TUser> {
     }
 
     // Helper: Set cookies
-    private setAuthCookies(res: Response, userId: string, name: string, mail: string, existingRefreshTokens: string[] = []): { token: string; refreshTokens: string[] } {
-        const token = jwt.sign(
-            {
-                sub: userId,
-                name,
-                mail,
-                iat: Math.floor(Date.now() / 1000),
-                exp: Math.floor(Date.now() / 1000) + 15 * 60, // 15 mins
-            },
-            this.jwtSecret
-        );
-
-        const rawRefreshToken = jwt.sign(
-            {
-                sub: userId,
-                iat: Math.floor(Date.now() / 1000),
-                exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60, // 30 days
-            },
-            this.jwtSecret + "-refresh"
-        );
-
-        const hashed = hashRefreshToken(rawRefreshToken);
-        const refreshTokens = [...existingRefreshTokens, hashed].slice(-5); // Keep last 5 sessions max
-
-        res.cookie("accessToken", token, {
+    private writeAuthCookies(res: Response, accessToken: string, rawRefreshToken: string) {
+        res.cookie("accessToken", accessToken, {
             httpOnly: true,
             secure: this.secureCookies,
             sameSite: "lax",
@@ -131,8 +136,42 @@ export class EasyLoginServer<TUser> {
             path: "/",
             ...(this.cookieDomain ? { domain: this.cookieDomain } : {}),
         });
+    }
 
-        return { token, refreshTokens };
+    // Helper: Generate accessToken, rawRefreshToken and updated refreshTokens list
+    private generateAuthTokens(userId: string, name: string, mail: string, existingRefreshTokens: string[] = []): { token: string; rawRefreshToken: string; refreshTokens: string[] } {
+        const token = jwt.sign(
+            {
+                sub: userId,
+                name,
+                mail,
+                iat: Math.floor(Date.now() / 1000),
+                exp: Math.floor(Date.now() / 1000) + 15 * 60, // 15 mins
+            },
+            this.jwtSecret
+        );
+
+        const rawRefreshToken = jwt.sign(
+            {
+                sub: userId,
+                jti: randomUUID(),
+                iat: Math.floor(Date.now() / 1000),
+                exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60, // 30 days
+            },
+            this.jwtSecret + "-refresh"
+        );
+
+        const hashed = hashRefreshToken(rawRefreshToken);
+        const refreshTokens = [...existingRefreshTokens, hashed].slice(-5); // Keep last 5 sessions max
+
+        return { token, rawRefreshToken, refreshTokens };
+    }
+
+    // Helper: Set cookies
+    private setAuthCookies(res: Response, userId: string, name: string, mail: string, existingRefreshTokens: string[] = []): { token: string; rawRefreshToken: string; refreshTokens: string[] } {
+        const { token, rawRefreshToken, refreshTokens } = this.generateAuthTokens(userId, name, mail, existingRefreshTokens);
+        this.writeAuthCookies(res, token, rawRefreshToken);
+        return { token, rawRefreshToken, refreshTokens };
     }
 
     // Helper: Clear cookies
@@ -194,47 +233,116 @@ export class EasyLoginServer<TUser> {
         }
     }
 
+    // Helper: Clean up expired grace period entries
+    private cleanupGraceMap(): void {
+        const now = Date.now();
+        for (const [hashed, grace] of this.rotationGraceMap.entries()) {
+            if (grace.expiresAt <= now) {
+                this.rotationGraceMap.delete(hashed);
+            }
+        }
+    }
+
+    // Helper: Perform actual single rotation in database
+    private async performTokenRotation(userId: string, hashed: string): Promise<RotatedTokenGrace | null> {
+        const user = await this.db.getUserById(userId);
+        if (!user || !user.refreshTokens) {
+            return null;
+        }
+
+        if (!user.refreshTokens.includes(hashed)) {
+            return null;
+        }
+
+        const name = (user as any).name || "";
+        const remainingRefreshes = user.refreshTokens.filter((t: string) => t !== hashed);
+        const { token: newAccessToken, rawRefreshToken: newRawRefreshToken, refreshTokens: updatedRefreshes } =
+            this.generateAuthTokens(userId, name, user.mail, remainingRefreshes);
+
+        await this.db.updateUser(userId, {
+            ...user,
+            refreshTokens: updatedRefreshes,
+        });
+
+        const graceEntry: RotatedTokenGrace = {
+            userId,
+            name,
+            mail: user.mail,
+            token: newAccessToken,
+            rawRefreshToken: newRawRefreshToken,
+            expiresAt: Date.now() + this.gracePeriodMs,
+        };
+        this.rotationGraceMap.set(hashed, graceEntry);
+
+        return graceEntry;
+    }
+
     // Auto-refresh token if expired but refresh token cookie is valid
     private async tryAutoRefresh(req: Request, res: Response): Promise<{ userId: string; name: string; mail: string } | null> {
         const refreshToken = this.getCookie(req, "refreshToken");
         if (!refreshToken) return null;
 
+        let payload: any;
         try {
-            const payload = jwt.verify(refreshToken, this.jwtSecret + "-refresh") as any;
-            if (!payload || !payload.sub) return null;
+            payload = jwt.verify(refreshToken, this.jwtSecret + "-refresh") as any;
+        } catch {
+            this.clearAuthCookies(res);
+            return null;
+        }
 
-            const userId = payload.sub;
-            const user = await this.db.getUserById(userId);
-            if (!user || !user.refreshTokens) return null;
+        if (!payload || !payload.sub || typeof payload.sub !== "string") {
+            this.clearAuthCookies(res);
+            return null;
+        }
 
-            const hashed = hashRefreshToken(refreshToken);
-            if (!user.refreshTokens.includes(hashed)) {
-                // Reuse detected: clear tokens for safety
-                await this.db.updateUser(userId, { ...user, refreshTokens: [] });
+        const userId = payload.sub;
+        const hashed = hashRefreshToken(refreshToken);
+
+        // 1. Check Grace Period (RFC 6819)
+        this.cleanupGraceMap();
+        const grace = this.rotationGraceMap.get(hashed);
+        if (grace) {
+            if (Date.now() < grace.expiresAt && grace.userId === userId) {
+                this.writeAuthCookies(res, grace.token, grace.rawRefreshToken);
+                (req as any)._easyAuthNewAccessToken = grace.token;
+                return {
+                    userId: grace.userId,
+                    name: grace.name,
+                    mail: grace.mail,
+                };
+            } else {
+                this.rotationGraceMap.delete(hashed);
+            }
+        }
+
+        // 2. In-flight Mutex / Deduplication for concurrent requests
+        let inFlight = this.refreshMutexMap.get(hashed);
+        if (!inFlight) {
+            inFlight = this.performTokenRotation(userId, hashed).finally(() => {
+                this.refreshMutexMap.delete(hashed);
+            });
+            inFlight.catch(() => {});
+            this.refreshMutexMap.set(hashed, inFlight);
+        }
+
+        try {
+            const result = await inFlight;
+            if (!result) {
+                // Invalid or already rotated beyond grace period: clear cookies for this client only,
+                // do NOT clear user.refreshTokens in DB to protect active sessions on other devices
                 this.clearAuthCookies(res);
                 return null;
             }
 
-            const name = (user as any).name || "";
-            const { token: newAccessToken, refreshTokens: updatedRefreshes } = this.setAuthCookies(
-                res,
-                userId,
-                name,
-                user.mail,
-                user.refreshTokens.filter((t: string) => t !== hashed)
-            );
-
-            await this.db.updateUser(userId, {
-                ...user,
-                refreshTokens: updatedRefreshes,
-            });
-
+            this.writeAuthCookies(res, result.token, result.rawRefreshToken);
+            (req as any)._easyAuthNewAccessToken = result.token;
             return {
-                userId,
-                name,
-                mail: user.mail,
+                userId: result.userId,
+                name: result.name,
+                mail: result.mail,
             };
         } catch (err) {
+            this.clearAuthCookies(res);
             return null;
         }
     }
@@ -518,11 +626,16 @@ export class EasyLoginServer<TUser> {
     async logout(req: Request, res?: Response): Promise<{ message: "success" }> {
         if (res) {
             try {
+                const currentRefresh = this.getCookie(req, "refreshToken");
+                if (currentRefresh) {
+                    const hashed = hashRefreshToken(currentRefresh);
+                    this.rotationGraceMap.delete(hashed);
+                }
+
                 const auth = await this.checkLogin(req, res);
                 if (auth) {
                     const user = await this.db.getUserById(auth.userId);
                     if (user && user.refreshTokens) {
-                        const currentRefresh = this.getCookie(req, "refreshToken");
                         if (currentRefresh) {
                             const hashed = hashRefreshToken(currentRefresh);
                             const updated = user.refreshTokens.filter((t: string) => t !== hashed);
