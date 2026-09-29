@@ -31,6 +31,7 @@
   "types": "types.d.ts",
   "scripts": {
     "build": "tsc",
+    "test": "node --test --experimental-strip-types test/**/*.test.ts",
     "example": "npm --prefix example run dev",
     "example:prod": "npm --prefix example run start"
   },
